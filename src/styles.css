@@ -142,3 +142,30 @@
     color: var(--color-foreground);
   }
 }
+
+@keyframes soft-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@utility animate-soft-float {
+  animation: soft-float 2.6s ease-in-out infinite;
+}
+
+@utility badge-glass {
+  border-radius: 9999px;
+  background: color-mix(in oklab, black 45%, transparent);
+  color: white;
+  font-weight: 700;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+  outline: 1px solid rgb(255 255 255 / 0.15);
+  outline-offset: -1px;
+}
+
+html, body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#lovable-badge { display: none !important; }
