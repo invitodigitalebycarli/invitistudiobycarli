@@ -94,10 +94,23 @@ function Index() {
   );
 
   const onUpload = async (key: MediaKey, file: File) => {
-    const id = await putMedia(file);
-    if (!site) return;
-    update({ media: { ...site.media, [key]: id } });
+    try {
+      const id = await putMedia(file);
+      setSites((prev) => {
+        const next = prev.map((s) =>
+          s.id === activeId ? { ...s, media: { ...s.media, [key]: id } } : s,
+        );
+        saveSites(next);
+        return next;
+      });
+    } catch (err) {
+      console.error("upload failed", err);
+      alert(
+        "Non è stato possibile salvare il file. Prova con un file più piccolo o disattiva la navigazione privata.",
+      );
+    }
   };
+
 
   const start = () => {
     if (editMode) return;
@@ -483,8 +496,10 @@ function Index() {
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
+                    e.target.value = "";
                     if (f) void onUpload(m.key, f);
                   }}
+
                 />
               </label>
             ))}
@@ -619,8 +634,10 @@ function Slot({
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
+              e.target.value = "";
               if (f) onFile(f);
             }}
+
           />
         </label>
       ) : null}
