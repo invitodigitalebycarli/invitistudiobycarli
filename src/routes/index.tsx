@@ -70,7 +70,7 @@ function Index() {
     const loaded = loadSites();
     setSites(loaded);
     const saved = getActiveId();
-    setActive(saved && loaded.some((s) => s.id === saved) ? saved : loaded[0].id);
+    setActive(saved && loaded.some((s) => s.id === saved) ? saved : (loaded[0]?.id ?? null));
   }, []);
 
   const site = sites.find((s) => s.id === activeId) ?? null;
@@ -452,8 +452,10 @@ function Index() {
                   const next = sites.filter((s) => s.id !== site.id);
                   setSites(next);
                   saveSites(next);
-                  setActive(next[0].id);
-                  setActiveId(next[0].id);
+                  if (next[0]) {
+                    setActive(next[0].id);
+                    setActiveId(next[0].id);
+                  }
                 }}
                 className="rounded-md border border-input px-3 py-2 text-xs text-destructive"
               >
