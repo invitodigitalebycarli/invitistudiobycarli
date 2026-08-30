@@ -110,14 +110,20 @@ function openDb(): Promise<IDBDatabase> {
 export async function putMedia(file: File): Promise<string> {
   const db = await openDb();
   const id = crypto.randomUUID();
+  // Some browsers (notably Safari) can fail to structured-clone a File; store a plain Blob.
+  const blob = new Blob([await file.arrayBuffer()], {
+    type: file.type || "application/octet-stream",
+  });
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(file, id);
+    tx.objectStore(STORE).put(blob, id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
   });
   return id;
 }
+
 
 export async function getMedia(id: string): Promise<Blob | null> {
   const db = await openDb();
