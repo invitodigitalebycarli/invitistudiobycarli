@@ -71,50 +71,81 @@ function Index() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<string | null>(null);
 
+  const pinRef = useRef<string>("");
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    const loaded = loadSites();
-    setSites(loaded);
-    const saved = getActiveId();
-    setActive(saved && loaded.some((s) => s.id === saved) ? saved : (loaded[0]?.id ?? null));
+    void (async () => {
+      try {
+        const loaded = await listSitesFn();
+        setSites(loaded);
+        const saved = getActiveId();
+        setActive(saved && loaded.some((s) => s.id === saved) ? saved : (loaded[0]?.id ?? null));
+      } catch (err) {
+        console.error("load failed", err);
+      }
+    })();
   }, []);
 
   const site = sites.find((s) => s.id === activeId) ?? null;
 
-  const poster = useMediaUrl(site?.media.poster);
-  const video = useMediaUrl(site?.media.video);
-  const invite = useMediaUrl(site?.media.invite);
-  const dresscode = useMediaUrl(site?.media.dresscode);
-  const logo = useMediaUrl(site?.media.logo);
-  const music = useMediaUrl(site?.media.music);
+  const poster = mediaUrl(site?.media.poster);
+  const video = mediaUrl(site?.media.video);
+  const invite = mediaUrl(site?.media.invite);
+  const dresscode = mediaUrl(site?.media.dresscode);
+  const logo = mediaUrl(site?.media.logo);
+  const music = mediaUrl(site?.media.music);
+
+  const persist = useCallback(async (next: InviteConfig) => {
+    if (!pinRef.current) return;
+    try {
+      await saveSiteFn({ data: { pin: pinRef.current, site: next } });
+    } catch (err) {
+      console.error("save failed", err);
+      alert("Salvataggio online non riuscito. Riprova.");
+    }
+  }, []);
 
   const update = useCallback(
     (patch: Partial<InviteConfig>) => {
       setSites((prev) => {
         const next = prev.map((s) => (s.id === activeId ? { ...s, ...patch } : s));
-        saveSites(next);
+        const current = next.find((s) => s.id === activeId);
+        if (current) {
+          if (saveTimer.current) clearTimeout(saveTimer.current);
+          saveTimer.current = setTimeout(() => void persist(current), 500);
+        }
         return next;
       });
     },
-    [activeId],
+    [activeId, persist],
   );
 
   const onUpload = async (key: MediaKey, file: File) => {
+    if (!pinRef.current) return;
     try {
-      const id = await putMedia(file);
+      const ext = file.name.split(".").pop() ?? "bin";
+      const { path, token, bucket } = await createUploadFn({
+        data: { pin: pinRef.current, ext },
+      });
+      const { error } = await supabase.storage.from(bucket).uploadToSignedUrl(path, token, file);
+      if (error) throw error;
+
+      let saved: InviteConfig | null = null;
       setSites((prev) => {
         const next = prev.map((s) =>
-          s.id === activeId ? { ...s, media: { ...s.media, [key]: id } } : s,
+          s.id === activeId ? { ...s, media: { ...s.media, [key]: path } } : s,
         );
-        saveSites(next);
+        saved = next.find((s) => s.id === activeId) ?? null;
         return next;
       });
+      if (saved) await persist(saved);
     } catch (err) {
       console.error("upload failed", err);
-      alert(
-        "Non è stato possibile salvare il file. Prova con un file più piccolo o disattiva la navigazione privata.",
-      );
+      alert("Non è stato possibile caricare il file. Controlla la dimensione (max 50MB).");
     }
   };
+
 
 
   const start = () => {
