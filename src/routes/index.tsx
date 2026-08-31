@@ -717,8 +717,8 @@ function Index() {
             placeholder="Link logo / Instagram"
           />
           <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-            Le modifiche restano su questo dispositivo. Il sito pubblicato resta visibile a tutti
-            senza password: solo l'editor richiede il PIN.
+            Le modifiche e i file sono salvati online: chi apre il sito pubblicato vede tutto,
+            senza password. Solo l'editor richiede il PIN.
           </p>
         </aside>
       )}
