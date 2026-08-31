@@ -248,7 +248,58 @@ function Index() {
     };
   }, [editMode, site, update]);
 
-  if (!site) return <main className="fixed inset-0 bg-white" />;
+  if (!site)
+    return (
+      <main className="fixed inset-0 bg-white">
+        <button
+          onClick={() => setPinOpen(true)}
+          className={`${BADGE} fixed bottom-4 left-4 z-40 px-4 py-2 text-xs`}
+        >
+          <Lock size={14} /> Modifica
+        </button>
+        {pinOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">
+            <div className="w-full max-w-xs rounded-2xl bg-background p-5 text-foreground shadow-2xl">
+              <h2 className="text-base font-semibold">Inserisci il PIN</h2>
+              <input
+                value={pinValue}
+                onChange={(e) => setPinValue(e.target.value)}
+                inputMode="numeric"
+                type="password"
+                className="mt-3 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="PIN"
+              />
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => {
+                    if (pinValue !== PIN) return;
+                    pinRef.current = pinValue;
+                    const fresh = defaultConfig("Invito");
+                    setSites([fresh]);
+                    setActive(fresh.id);
+                    setActiveId(fresh.id);
+                    setEditMode(true);
+                    setPinOpen(false);
+                    setPinValue("");
+                    void persist(fresh);
+                  }}
+                  className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+                >
+                  Entra
+                </button>
+                <button
+                  onClick={() => setPinOpen(false)}
+                  className="rounded-md border border-input px-3 py-2 text-sm"
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    );
+
 
   const showInvite = scene === "invite";
 
