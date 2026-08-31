@@ -5,14 +5,19 @@ import {
   type InviteConfig,
   type MediaKey,
   defaultConfig,
-  duplicateSite,
   getActiveId,
-  loadSites,
-  putMedia,
-  saveSites,
+  mediaUrl,
   setActiveId,
 } from "@/lib/invite-store";
-import { useMediaUrl } from "@/components/invite/useMediaUrl";
+import {
+  copyMediaFn,
+  createUploadFn,
+  deleteSiteFn,
+  listSitesFn,
+  saveSiteFn,
+} from "@/lib/invite.functions";
+import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
