@@ -501,11 +501,10 @@ function Index() {
             <button
               onClick={() => {
                 const fresh = defaultConfig("Nuovo invito");
-                const next = [...sites, fresh];
-                setSites(next);
-                saveSites(next);
+                setSites((prev) => [...prev, fresh]);
                 setActive(fresh.id);
                 setActiveId(fresh.id);
+                void persist(fresh);
               }}
               className="rounded-md border border-input px-3 py-2 text-xs"
             >
@@ -514,14 +513,18 @@ function Index() {
             {sites.length > 1 && (
               <button
                 onClick={() => {
-                  const next = sites.filter((s) => s.id !== site.id);
+                  const removed = site.id;
+                  const next = sites.filter((s) => s.id !== removed);
                   setSites(next);
-                  saveSites(next);
                   if (next[0]) {
                     setActive(next[0].id);
                     setActiveId(next[0].id);
                   }
+                  if (pinRef.current) {
+                    void deleteSiteFn({ data: { pin: pinRef.current, id: removed } });
+                  }
                 }}
+
                 className="rounded-md border border-input px-3 py-2 text-xs text-destructive"
               >
                 <Trash2 size={14} />
