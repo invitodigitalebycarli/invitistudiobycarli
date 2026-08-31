@@ -442,11 +442,20 @@ function Index() {
               <button
                 onClick={() => {
                   if (pinValue === PIN) {
+                    pinRef.current = pinValue;
                     setEditMode(true);
                     setPinOpen(false);
                     setPinValue("");
+                    if (!sites.length) {
+                      const fresh = defaultConfig("Invito");
+                      setSites([fresh]);
+                      setActive(fresh.id);
+                      setActiveId(fresh.id);
+                      void persist(fresh);
+                    }
                   }
                 }}
+
                 className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
               >
                 Entra
