@@ -5,14 +5,19 @@ import {
   type InviteConfig,
   type MediaKey,
   defaultConfig,
-  duplicateSite,
   getActiveId,
-  loadSites,
-  putMedia,
-  saveSites,
+  mediaUrl,
   setActiveId,
 } from "@/lib/invite-store";
-import { useMediaUrl } from "@/components/invite/useMediaUrl";
+import {
+  copyMediaFn,
+  createUploadFn,
+  deleteSiteFn,
+  listSitesFn,
+  saveSiteFn,
+} from "@/lib/invite.functions";
+import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -66,50 +71,81 @@ function Index() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<string | null>(null);
 
+  const pinRef = useRef<string>("");
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    const loaded = loadSites();
-    setSites(loaded);
-    const saved = getActiveId();
-    setActive(saved && loaded.some((s) => s.id === saved) ? saved : (loaded[0]?.id ?? null));
+    void (async () => {
+      try {
+        const loaded = await listSitesFn();
+        setSites(loaded);
+        const saved = getActiveId();
+        setActive(saved && loaded.some((s) => s.id === saved) ? saved : (loaded[0]?.id ?? null));
+      } catch (err) {
+        console.error("load failed", err);
+      }
+    })();
   }, []);
 
   const site = sites.find((s) => s.id === activeId) ?? null;
 
-  const poster = useMediaUrl(site?.media.poster);
-  const video = useMediaUrl(site?.media.video);
-  const invite = useMediaUrl(site?.media.invite);
-  const dresscode = useMediaUrl(site?.media.dresscode);
-  const logo = useMediaUrl(site?.media.logo);
-  const music = useMediaUrl(site?.media.music);
+  const poster = mediaUrl(site?.media.poster);
+  const video = mediaUrl(site?.media.video);
+  const invite = mediaUrl(site?.media.invite);
+  const dresscode = mediaUrl(site?.media.dresscode);
+  const logo = mediaUrl(site?.media.logo);
+  const music = mediaUrl(site?.media.music);
+
+  const persist = useCallback(async (next: InviteConfig) => {
+    if (!pinRef.current) return;
+    try {
+      await saveSiteFn({ data: { pin: pinRef.current, site: next } });
+    } catch (err) {
+      console.error("save failed", err);
+      alert("Salvataggio online non riuscito. Riprova.");
+    }
+  }, []);
 
   const update = useCallback(
     (patch: Partial<InviteConfig>) => {
       setSites((prev) => {
         const next = prev.map((s) => (s.id === activeId ? { ...s, ...patch } : s));
-        saveSites(next);
+        const current = next.find((s) => s.id === activeId);
+        if (current) {
+          if (saveTimer.current) clearTimeout(saveTimer.current);
+          saveTimer.current = setTimeout(() => void persist(current), 500);
+        }
         return next;
       });
     },
-    [activeId],
+    [activeId, persist],
   );
 
   const onUpload = async (key: MediaKey, file: File) => {
+    if (!pinRef.current) return;
     try {
-      const id = await putMedia(file);
+      const ext = file.name.split(".").pop() ?? "bin";
+      const { path, token, bucket } = await createUploadFn({
+        data: { pin: pinRef.current, ext },
+      });
+      const { error } = await supabase.storage.from(bucket).uploadToSignedUrl(path, token, file);
+      if (error) throw error;
+
+      let saved: InviteConfig | null = null;
       setSites((prev) => {
         const next = prev.map((s) =>
-          s.id === activeId ? { ...s, media: { ...s.media, [key]: id } } : s,
+          s.id === activeId ? { ...s, media: { ...s.media, [key]: path } } : s,
         );
-        saveSites(next);
+        saved = next.find((s) => s.id === activeId) ?? null;
         return next;
       });
+      if (saved) await persist(saved);
     } catch (err) {
       console.error("upload failed", err);
-      alert(
-        "Non è stato possibile salvare il file. Prova con un file più piccolo o disattiva la navigazione privata.",
-      );
+      alert("Non è stato possibile caricare il file. Controlla la dimensione (max 50MB).");
     }
   };
+
 
 
   const start = () => {
@@ -160,14 +196,30 @@ function Index() {
   };
 
   const onDuplicate = async () => {
-    if (!site) return;
-    const copy = await duplicateSite(site);
-    const next = [...sites, copy];
-    setSites(next);
-    saveSites(next);
+    if (!site || !pinRef.current) return;
+    const media: InviteConfig["media"] = {};
+    for (const [key, value] of Object.entries(site.media)) {
+      if (!value) continue;
+      try {
+        const res = await copyMediaFn({ data: { pin: pinRef.current, path: value } });
+        media[key as MediaKey] = res.path;
+      } catch (err) {
+        console.error("copy failed", err);
+      }
+    }
+    const copy: InviteConfig = {
+      ...site,
+      id: crypto.randomUUID(),
+      name: `${site.name} (copia)`,
+      media,
+      hotspots: site.hotspots.map((h) => ({ ...h })),
+    };
+    setSites((prev) => [...prev, copy]);
     setActive(copy.id);
     setActiveId(copy.id);
+    await persist(copy);
   };
+
 
   // Hotspot dragging (edit mode only)
   useEffect(() => {
@@ -196,7 +248,58 @@ function Index() {
     };
   }, [editMode, site, update]);
 
-  if (!site) return <main className="fixed inset-0 bg-white" />;
+  if (!site)
+    return (
+      <main className="fixed inset-0 bg-white">
+        <button
+          onClick={() => setPinOpen(true)}
+          className={`${BADGE} fixed bottom-4 left-4 z-40 px-4 py-2 text-xs`}
+        >
+          <Lock size={14} /> Modifica
+        </button>
+        {pinOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">
+            <div className="w-full max-w-xs rounded-2xl bg-background p-5 text-foreground shadow-2xl">
+              <h2 className="text-base font-semibold">Inserisci il PIN</h2>
+              <input
+                value={pinValue}
+                onChange={(e) => setPinValue(e.target.value)}
+                inputMode="numeric"
+                type="password"
+                className="mt-3 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="PIN"
+              />
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => {
+                    if (pinValue !== PIN) return;
+                    pinRef.current = pinValue;
+                    const fresh = defaultConfig("Invito");
+                    setSites([fresh]);
+                    setActive(fresh.id);
+                    setActiveId(fresh.id);
+                    setEditMode(true);
+                    setPinOpen(false);
+                    setPinValue("");
+                    void persist(fresh);
+                  }}
+                  className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+                >
+                  Entra
+                </button>
+                <button
+                  onClick={() => setPinOpen(false)}
+                  className="rounded-md border border-input px-3 py-2 text-sm"
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    );
+
 
   const showInvite = scene === "invite";
 
@@ -390,11 +493,20 @@ function Index() {
               <button
                 onClick={() => {
                   if (pinValue === PIN) {
+                    pinRef.current = pinValue;
                     setEditMode(true);
                     setPinOpen(false);
                     setPinValue("");
+                    if (!sites.length) {
+                      const fresh = defaultConfig("Invito");
+                      setSites([fresh]);
+                      setActive(fresh.id);
+                      setActiveId(fresh.id);
+                      void persist(fresh);
+                    }
                   }
                 }}
+
                 className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
               >
                 Entra
@@ -449,11 +561,10 @@ function Index() {
             <button
               onClick={() => {
                 const fresh = defaultConfig("Nuovo invito");
-                const next = [...sites, fresh];
-                setSites(next);
-                saveSites(next);
+                setSites((prev) => [...prev, fresh]);
                 setActive(fresh.id);
                 setActiveId(fresh.id);
+                void persist(fresh);
               }}
               className="rounded-md border border-input px-3 py-2 text-xs"
             >
@@ -462,14 +573,18 @@ function Index() {
             {sites.length > 1 && (
               <button
                 onClick={() => {
-                  const next = sites.filter((s) => s.id !== site.id);
+                  const removed = site.id;
+                  const next = sites.filter((s) => s.id !== removed);
                   setSites(next);
-                  saveSites(next);
                   if (next[0]) {
                     setActive(next[0].id);
                     setActiveId(next[0].id);
                   }
+                  if (pinRef.current) {
+                    void deleteSiteFn({ data: { pin: pinRef.current, id: removed } });
+                  }
                 }}
+
                 className="rounded-md border border-input px-3 py-2 text-xs text-destructive"
               >
                 <Trash2 size={14} />
@@ -602,8 +717,8 @@ function Index() {
             placeholder="Link logo / Instagram"
           />
           <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-            Le modifiche restano su questo dispositivo. Il sito pubblicato resta visibile a tutti
-            senza password: solo l'editor richiede il PIN.
+            Le modifiche e i file sono salvati online: chi apre il sito pubblicato vede tutto,
+            senza password. Solo l'editor richiede il PIN.
           </p>
         </aside>
       )}
