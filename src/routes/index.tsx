@@ -196,14 +196,30 @@ function Index() {
   };
 
   const onDuplicate = async () => {
-    if (!site) return;
-    const copy = await duplicateSite(site);
-    const next = [...sites, copy];
-    setSites(next);
-    saveSites(next);
+    if (!site || !pinRef.current) return;
+    const media: InviteConfig["media"] = {};
+    for (const [key, value] of Object.entries(site.media)) {
+      if (!value) continue;
+      try {
+        const res = await copyMediaFn({ data: { pin: pinRef.current, path: value } });
+        media[key as MediaKey] = res.path;
+      } catch (err) {
+        console.error("copy failed", err);
+      }
+    }
+    const copy: InviteConfig = {
+      ...site,
+      id: crypto.randomUUID(),
+      name: `${site.name} (copia)`,
+      media,
+      hotspots: site.hotspots.map((h) => ({ ...h })),
+    };
+    setSites((prev) => [...prev, copy]);
     setActive(copy.id);
     setActiveId(copy.id);
+    await persist(copy);
   };
+
 
   // Hotspot dragging (edit mode only)
   useEffect(() => {
