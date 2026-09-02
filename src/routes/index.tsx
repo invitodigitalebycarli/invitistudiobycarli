@@ -125,27 +125,20 @@ function Index() {
   );
 
   const onUpload = async (key: MediaKey, file: File) => {
-    console.log("[upload] start", key, file.name, "pin?", !!pinRef.current);
     if (!pinRef.current) return;
     try {
       const ext = file.name.split(".").pop() ?? "bin";
-      console.log("[upload] requesting signed url");
       const { path, token, bucket } = await createUploadFn({
         data: { pin: pinRef.current, ext },
       });
-      console.log("[upload] signed ok", path, bucket);
       const { error } = await supabase.storage.from(bucket).uploadToSignedUrl(path, token, file);
-      console.log("[upload] storage resp", error);
       if (error) throw error;
 
-      console.log("[upload] uploaded", path, "activeId", activeId, "sites", sitesRef.current.length);
       const current = sitesRef.current.find((s) => s.id === activeId);
       if (!current) return;
       const next: InviteConfig = { ...current, media: { ...current.media, [key]: path } };
       setSites((prev) => prev.map((s) => (s.id === next.id ? next : s)));
-      console.log("[upload] persisting", !!pinRef.current);
       await persist(next);
-      console.log("[upload] persisted");
     } catch (err) {
       console.error("upload failed", err);
       alert("Non è stato possibile caricare il file. Controlla la dimensione (max 50MB).");
