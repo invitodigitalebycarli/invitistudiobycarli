@@ -134,11 +134,14 @@ function Index() {
       const { error } = await supabase.storage.from(bucket).uploadToSignedUrl(path, token, file);
       if (error) throw error;
 
+      console.log("[upload] uploaded", path, "activeId", activeId, "sites", sitesRef.current.length);
       const current = sitesRef.current.find((s) => s.id === activeId);
       if (!current) return;
       const next: InviteConfig = { ...current, media: { ...current.media, [key]: path } };
       setSites((prev) => prev.map((s) => (s.id === next.id ? next : s)));
+      console.log("[upload] persisting", !!pinRef.current);
       await persist(next);
+      console.log("[upload] persisted");
     } catch (err) {
       console.error("upload failed", err);
       alert("Non è stato possibile caricare il file. Controlla la dimensione (max 50MB).");
