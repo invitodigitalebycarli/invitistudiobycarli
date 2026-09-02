@@ -131,7 +131,9 @@ function Index() {
       const { path, token, bucket } = await createUploadFn({
         data: { pin: pinRef.current, ext },
       });
+      console.log("[upload] signed ok", path, bucket);
       const { error } = await supabase.storage.from(bucket).uploadToSignedUrl(path, token, file);
+      console.log("[upload] storage resp", error);
       if (error) throw error;
 
       console.log("[upload] uploaded", path, "activeId", activeId, "sites", sitesRef.current.length);
