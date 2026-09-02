@@ -125,9 +125,11 @@ function Index() {
   );
 
   const onUpload = async (key: MediaKey, file: File) => {
+    console.log("[upload] start", key, file.name, "pin?", !!pinRef.current);
     if (!pinRef.current) return;
     try {
       const ext = file.name.split(".").pop() ?? "bin";
+      console.log("[upload] requesting signed url");
       const { path, token, bucket } = await createUploadFn({
         data: { pin: pinRef.current, ext },
       });
