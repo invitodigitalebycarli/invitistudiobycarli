@@ -73,6 +73,9 @@ function Index() {
 
   const pinRef = useRef<string>("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sitesRef = useRef<InviteConfig[]>([]);
+  sitesRef.current = sites;
+
 
   useEffect(() => {
     void (async () => {
