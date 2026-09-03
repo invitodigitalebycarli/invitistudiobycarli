@@ -129,7 +129,7 @@ export function InviteApp({
     try {
       const ext = file.name.split(".").pop() ?? "bin";
       const { path, token, bucket } = await createUploadFn({
-        data: { pin: pinRef.current, ext },
+        data: { token: pinRef.current, ext },
       });
       const { error } = await supabase.storage.from(bucket).uploadToSignedUrl(path, token, file);
       if (error) throw error;
