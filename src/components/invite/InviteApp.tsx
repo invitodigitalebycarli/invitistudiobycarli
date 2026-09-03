@@ -57,6 +57,27 @@ export function InviteApp({
   const dragRef = useRef<string | null>(null);
 
   const pinRef = useRef<string>("");
+  const [pinError, setPinError] = useState(false);
+  const [pinBusy, setPinBusy] = useState(false);
+
+  // The PIN is verified only on the server; the client keeps just an opaque session token.
+  const tryUnlock = useCallback(async (onSuccess?: () => void) => {
+    if (pinBusy) return;
+    setPinBusy(true);
+    setPinError(false);
+    try {
+      const { token } = await verifyPinFn({ data: { pin: pinValue } });
+      pinRef.current = token;
+      setPinOpen(false);
+      setPinValue("");
+      setEditMode(true);
+      onSuccess?.();
+    } catch {
+      setPinError(true);
+    } finally {
+      setPinBusy(false);
+    }
+  }, [pinBusy, pinValue]);
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unlockTap = () => {
