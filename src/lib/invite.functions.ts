@@ -43,9 +43,9 @@ export const listSitesFn = createServerFn({ method: "GET" }).handler(async () =>
 });
 
 export const saveSiteFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { pin: string; site: InviteConfig }) => data)
+  .inputValidator((data: { token: string; site: InviteConfig }) => data)
   .handler(async ({ data }) => {
-    checkPin(data.pin);
+    checkToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { id, name, ...rest } = data.site;
     const { error } = await supabaseAdmin
@@ -56,9 +56,9 @@ export const saveSiteFn = createServerFn({ method: "POST" })
   });
 
 export const deleteSiteFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { pin: string; id: string }) => data)
+  .inputValidator((data: { token: string; id: string }) => data)
   .handler(async ({ data }) => {
-    checkPin(data.pin);
+    checkToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("invite_sites").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -66,9 +66,9 @@ export const deleteSiteFn = createServerFn({ method: "POST" })
   });
 
 export const createUploadFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { pin: string; ext: string }) => data)
+  .inputValidator((data: { token: string; ext: string }) => data)
   .handler(async ({ data }) => {
-    checkPin(data.pin);
+    checkToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const safeExt = (data.ext || "bin").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) || "bin";
     const path = `${crypto.randomUUID()}.${safeExt}`;
@@ -80,9 +80,9 @@ export const createUploadFn = createServerFn({ method: "POST" })
   });
 
 export const copyMediaFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { pin: string; path: string }) => data)
+  .inputValidator((data: { token: string; path: string }) => data)
   .handler(async ({ data }) => {
-    checkPin(data.pin);
+    checkToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const ext = data.path.split(".").pop() ?? "bin";
     const target = `${crypto.randomUUID()}.${ext}`;
