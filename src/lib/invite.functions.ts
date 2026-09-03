@@ -1,11 +1,30 @@
 import { createServerFn } from "@tanstack/react-start";
+import { createHmac } from "crypto";
 import type { InviteConfig } from "@/lib/invite-store";
 
 const BUCKET = "invite-media";
 
-function checkPin(pin: string) {
+function sessionToken(secret: string) {
+  return createHmac("sha256", secret).update("invite-editor-session").digest("hex");
+}
+
+// The PIN is verified ONLY here, server-side. The client receives an opaque
+// session token and never sees or stores the real PIN value.
+export const verifyPinFn = createServerFn({ method: "POST" })
+  .inputValidator((data: { pin: string }) => data)
+  .handler(async ({ data }) => {
+    const expected = process.env["EDITOR_PIN"];
+    if (!expected || typeof data.pin !== "string" || data.pin !== expected) {
+      throw new Error("PIN non valido");
+    }
+    return { token: sessionToken(expected) };
+  });
+
+function checkToken(token: string) {
   const expected = process.env["EDITOR_PIN"];
-  if (!expected || pin !== expected) throw new Error("PIN non valido");
+  if (!expected || !token || token !== sessionToken(expected)) {
+    throw new Error("Sessione editor non valida");
+  }
 }
 
 export const listSitesFn = createServerFn({ method: "GET" }).handler(async () => {
