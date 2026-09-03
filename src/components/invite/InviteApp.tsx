@@ -294,23 +294,24 @@ export function InviteApp({
                 className="mt-3 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 placeholder="PIN"
               />
+              {pinError && (
+                <p className="mt-2 text-xs text-red-500">PIN non valido. Riprova.</p>
+              )}
               <div className="mt-4 flex gap-2">
                 <button
+                  disabled={pinBusy}
                   onClick={() => {
-                    if (pinValue !== PIN) return;
-                    pinRef.current = pinValue;
-                    const fresh = defaultConfig("Invito");
-                    setSites([fresh]);
-                    setActive(fresh.id);
-                    setActiveId(fresh.id);
-                    setEditMode(true);
-                    setPinOpen(false);
-                    setPinValue("");
-                    void persist(fresh);
+                    void tryUnlock(() => {
+                      const fresh = defaultConfig("Invito");
+                      setSites([fresh]);
+                      setActive(fresh.id);
+                      setActiveId(fresh.id);
+                      void persist(fresh);
+                    });
                   }}
-                  className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+                  className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
                 >
-                  Entra
+                  {pinBusy ? "Verifica…" : "Entra"}
                 </button>
                 <button
                   onClick={() => setPinOpen(false)}
