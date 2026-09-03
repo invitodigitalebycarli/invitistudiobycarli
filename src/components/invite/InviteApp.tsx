@@ -254,7 +254,7 @@ export function InviteApp({
       <main className="fixed inset-0 bg-white">
         {!publicOnly && (
         <button
-          onClick={() => setPinOpen(true)}
+          onClick={unlockTap}
           aria-label="Area riservata"
           className="fixed bottom-3 left-3 z-40 p-2 text-black/20 transition-opacity hover:text-black/60"
         >
@@ -483,7 +483,7 @@ export function InviteApp({
           </button>
         ) : (
           <button
-            onClick={() => setPinOpen(true)}
+            onClick={unlockTap}
             aria-label="Area riservata"
             className="fixed bottom-3 left-3 z-40 p-2 text-black/20 transition-opacity hover:text-black/60"
           >
