@@ -102,7 +102,7 @@ export function InviteApp({
   const persist = useCallback(async (next: InviteConfig) => {
     if (!pinRef.current) return;
     try {
-      await saveSiteFn({ data: { pin: pinRef.current, site: next } });
+      await saveSiteFn({ data: { token: pinRef.current, site: next } });
     } catch (err) {
       console.error("save failed", err);
       alert("Salvataggio online non riuscito. Riprova.");
@@ -201,7 +201,7 @@ export function InviteApp({
     for (const [key, value] of Object.entries(site.media)) {
       if (!value) continue;
       try {
-        const res = await copyMediaFn({ data: { pin: pinRef.current, path: value } });
+        const res = await copyMediaFn({ data: { token: pinRef.current, path: value } });
         media[key as MediaKey] = res.path;
       } catch (err) {
         console.error("copy failed", err);
@@ -623,7 +623,7 @@ export function InviteApp({
                     setActiveId(next[0].id);
                   }
                   if (pinRef.current) {
-                    void deleteSiteFn({ data: { pin: pinRef.current, id: removed } });
+                    void deleteSiteFn({ data: { token: pinRef.current, id: removed } });
                   }
                 }}
 
