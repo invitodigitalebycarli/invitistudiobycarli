@@ -57,6 +57,20 @@ export function InviteApp({
   const dragRef = useRef<string | null>(null);
 
   const pinRef = useRef<string>("");
+  const tapCount = useRef(0);
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unlockTap = () => {
+    tapCount.current += 1;
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+    if (tapCount.current >= 5) {
+      tapCount.current = 0;
+      setPinOpen(true);
+      return;
+    }
+    tapTimer.current = setTimeout(() => {
+      tapCount.current = 0;
+    }, 2000);
+  };
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sitesRef = useRef<InviteConfig[]>([]);
   sitesRef.current = sites;
@@ -240,7 +254,7 @@ export function InviteApp({
       <main className="fixed inset-0 bg-white">
         {!publicOnly && (
         <button
-          onClick={() => setPinOpen(true)}
+          onClick={unlockTap}
           aria-label="Area riservata"
           className="fixed bottom-3 left-3 z-40 p-2 text-black/20 transition-opacity hover:text-black/60"
         >
@@ -469,7 +483,7 @@ export function InviteApp({
           </button>
         ) : (
           <button
-            onClick={() => setPinOpen(true)}
+            onClick={unlockTap}
             aria-label="Area riservata"
             className="fixed bottom-3 left-3 z-40 p-2 text-black/20 transition-opacity hover:text-black/60"
           >
