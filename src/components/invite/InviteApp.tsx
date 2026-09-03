@@ -6,6 +6,7 @@ import {
   type MediaKey,
   defaultConfig,
   getActiveId,
+  slugify,
   mediaUrl,
   setActiveId,
 } from "@/lib/invite-store";
@@ -237,13 +238,15 @@ export function InviteApp({
   if (!site)
     return (
       <main className="fixed inset-0 bg-white">
+        {!publicOnly && (
         <button
           onClick={() => setPinOpen(true)}
           className={`${BADGE} fixed bottom-4 left-4 z-40 px-4 py-2 text-xs`}
         >
           <Lock size={14} /> Modifica
         </button>
-        {pinOpen && (
+        )}
+        {!publicOnly && pinOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">
             <div className="w-full max-w-xs rounded-2xl bg-background p-5 text-foreground shadow-2xl">
               <h2 className="text-base font-semibold">Inserisci il PIN</h2>
@@ -455,6 +458,7 @@ export function InviteApp({
       </div>
 
       {/* Edit entry */}
+      {!publicOnly && (
       <button
         onClick={() => (editMode ? setEditMode(false) : setPinOpen(true))}
         className={`${BADGE} fixed bottom-4 left-4 z-40 px-4 py-2 text-xs`}
@@ -462,8 +466,9 @@ export function InviteApp({
         {editMode ? <X size={14} /> : <Lock size={14} />}
         {editMode ? "Chiudi editor" : "Modifica"}
       </button>
+      )}
 
-      {pinOpen && (
+      {!publicOnly && pinOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">
           <div className="w-full max-w-xs rounded-2xl bg-background p-5 text-foreground shadow-2xl">
             <h2 className="text-base font-semibold">Inserisci il PIN</h2>
@@ -518,6 +523,34 @@ export function InviteApp({
             onChange={(e) => update({ name: e.target.value })}
             className="mt-1 w-full rounded-md border border-input px-2 py-1.5 text-sm"
           />
+
+          <label className="mt-3 block text-xs font-medium">Indirizzo del link</label>
+          <div className="mt-1 flex gap-2">
+            <input
+              value={site.slug ?? ""}
+              onChange={(e) => update({ slug: slugify(e.target.value) })}
+              placeholder="invito-sara"
+              className="w-full rounded-md border border-input px-2 py-1.5 text-sm"
+            />
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/i/${site.slug || site.id}`;
+                void navigator.clipboard?.writeText(url);
+                alert(`Link copiato:\n${url}`);
+              }}
+              className="whitespace-nowrap rounded-md border border-input px-2 py-1.5 text-xs"
+            >
+              Copia link
+            </button>
+          </div>
+          <a
+            href={`/i/${site.slug || site.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 block truncate text-[11px] text-muted-foreground underline"
+          >
+            /i/{site.slug || site.id}
+          </a>
 
           <div className="mt-3 flex flex-wrap gap-2">
             {sites.map((s) => (
