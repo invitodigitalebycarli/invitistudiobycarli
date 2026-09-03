@@ -15,12 +15,12 @@ import {
   deleteSiteFn,
   listSitesFn,
   saveSiteFn,
+  verifyPinFn,
 } from "@/lib/invite.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 
 
-const PIN = "236486";
 const BADGE =
   "badge-glass inline-flex items-center justify-center gap-2 transition-transform active:scale-95";
 
