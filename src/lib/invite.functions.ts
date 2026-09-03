@@ -1,11 +1,30 @@
 import { createServerFn } from "@tanstack/react-start";
+import { createHmac } from "crypto";
 import type { InviteConfig } from "@/lib/invite-store";
 
 const BUCKET = "invite-media";
 
-function checkPin(pin: string) {
+function sessionToken(secret: string) {
+  return createHmac("sha256", secret).update("invite-editor-session").digest("hex");
+}
+
+// The PIN is verified ONLY here, server-side. The client receives an opaque
+// session token and never sees or stores the real PIN value.
+export const verifyPinFn = createServerFn({ method: "POST" })
+  .inputValidator((data: { pin: string }) => data)
+  .handler(async ({ data }) => {
+    const expected = process.env["EDITOR_PIN"];
+    if (!expected || typeof data.pin !== "string" || data.pin !== expected) {
+      throw new Error("PIN non valido");
+    }
+    return { token: sessionToken(expected) };
+  });
+
+function checkToken(token: string) {
   const expected = process.env["EDITOR_PIN"];
-  if (!expected || pin !== expected) throw new Error("PIN non valido");
+  if (!expected || !token || token !== sessionToken(expected)) {
+    throw new Error("Sessione editor non valida");
+  }
 }
 
 export const listSitesFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -24,9 +43,9 @@ export const listSitesFn = createServerFn({ method: "GET" }).handler(async () =>
 });
 
 export const saveSiteFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { pin: string; site: InviteConfig }) => data)
+  .inputValidator((data: { token: string; site: InviteConfig }) => data)
   .handler(async ({ data }) => {
-    checkPin(data.pin);
+    checkToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { id, name, ...rest } = data.site;
     const { error } = await supabaseAdmin
@@ -37,9 +56,9 @@ export const saveSiteFn = createServerFn({ method: "POST" })
   });
 
 export const deleteSiteFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { pin: string; id: string }) => data)
+  .inputValidator((data: { token: string; id: string }) => data)
   .handler(async ({ data }) => {
-    checkPin(data.pin);
+    checkToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("invite_sites").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -47,9 +66,9 @@ export const deleteSiteFn = createServerFn({ method: "POST" })
   });
 
 export const createUploadFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { pin: string; ext: string }) => data)
+  .inputValidator((data: { token: string; ext: string }) => data)
   .handler(async ({ data }) => {
-    checkPin(data.pin);
+    checkToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const safeExt = (data.ext || "bin").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) || "bin";
     const path = `${crypto.randomUUID()}.${safeExt}`;
@@ -61,9 +80,9 @@ export const createUploadFn = createServerFn({ method: "POST" })
   });
 
 export const copyMediaFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { pin: string; path: string }) => data)
+  .inputValidator((data: { token: string; path: string }) => data)
   .handler(async ({ data }) => {
-    checkPin(data.pin);
+    checkToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const ext = data.path.split(".").pop() ?? "bin";
     const target = `${crypto.randomUUID()}.${ext}`;

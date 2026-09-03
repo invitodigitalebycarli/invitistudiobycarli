@@ -15,12 +15,12 @@ import {
   deleteSiteFn,
   listSitesFn,
   saveSiteFn,
+  verifyPinFn,
 } from "@/lib/invite.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 
 
-const PIN = "236486";
 const BADGE =
   "badge-glass inline-flex items-center justify-center gap-2 transition-transform active:scale-95";
 
@@ -57,6 +57,27 @@ export function InviteApp({
   const dragRef = useRef<string | null>(null);
 
   const pinRef = useRef<string>("");
+  const [pinError, setPinError] = useState(false);
+  const [pinBusy, setPinBusy] = useState(false);
+
+  // The PIN is verified only on the server; the client keeps just an opaque session token.
+  const tryUnlock = useCallback(async (onSuccess?: () => void) => {
+    if (pinBusy) return;
+    setPinBusy(true);
+    setPinError(false);
+    try {
+      const { token } = await verifyPinFn({ data: { pin: pinValue } });
+      pinRef.current = token;
+      setPinOpen(false);
+      setPinValue("");
+      setEditMode(true);
+      onSuccess?.();
+    } catch {
+      setPinError(true);
+    } finally {
+      setPinBusy(false);
+    }
+  }, [pinBusy, pinValue]);
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unlockTap = () => {
@@ -102,7 +123,7 @@ export function InviteApp({
   const persist = useCallback(async (next: InviteConfig) => {
     if (!pinRef.current) return;
     try {
-      await saveSiteFn({ data: { pin: pinRef.current, site: next } });
+      await saveSiteFn({ data: { token: pinRef.current, site: next } });
     } catch (err) {
       console.error("save failed", err);
       alert("Salvataggio online non riuscito. Riprova.");
@@ -129,7 +150,7 @@ export function InviteApp({
     try {
       const ext = file.name.split(".").pop() ?? "bin";
       const { path, token, bucket } = await createUploadFn({
-        data: { pin: pinRef.current, ext },
+        data: { token: pinRef.current, ext },
       });
       const { error } = await supabase.storage.from(bucket).uploadToSignedUrl(path, token, file);
       if (error) throw error;
@@ -201,7 +222,7 @@ export function InviteApp({
     for (const [key, value] of Object.entries(site.media)) {
       if (!value) continue;
       try {
-        const res = await copyMediaFn({ data: { pin: pinRef.current, path: value } });
+        const res = await copyMediaFn({ data: { token: pinRef.current, path: value } });
         media[key as MediaKey] = res.path;
       } catch (err) {
         console.error("copy failed", err);
@@ -273,23 +294,24 @@ export function InviteApp({
                 className="mt-3 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 placeholder="PIN"
               />
+              {pinError && (
+                <p className="mt-2 text-xs text-red-500">PIN non valido. Riprova.</p>
+              )}
               <div className="mt-4 flex gap-2">
                 <button
+                  disabled={pinBusy}
                   onClick={() => {
-                    if (pinValue !== PIN) return;
-                    pinRef.current = pinValue;
-                    const fresh = defaultConfig("Invito");
-                    setSites([fresh]);
-                    setActive(fresh.id);
-                    setActiveId(fresh.id);
-                    setEditMode(true);
-                    setPinOpen(false);
-                    setPinValue("");
-                    void persist(fresh);
+                    void tryUnlock(() => {
+                      const fresh = defaultConfig("Invito");
+                      setSites([fresh]);
+                      setActive(fresh.id);
+                      setActiveId(fresh.id);
+                      void persist(fresh);
+                    });
                   }}
-                  className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+                  className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
                 >
-                  Entra
+                  {pinBusy ? "Verifica…" : "Entra"}
                 </button>
                 <button
                   onClick={() => setPinOpen(false)}
@@ -503,27 +525,26 @@ export function InviteApp({
               className="mt-3 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               placeholder="PIN"
             />
+            {pinError && (
+              <p className="mt-2 text-xs text-red-500">PIN non valido. Riprova.</p>
+            )}
             <div className="mt-4 flex gap-2">
               <button
+                disabled={pinBusy}
                 onClick={() => {
-                  if (pinValue === PIN) {
-                    pinRef.current = pinValue;
-                    setEditMode(true);
-                    setPinOpen(false);
-                    setPinValue("");
-                    if (!sites.length) {
+                  void tryUnlock(() => {
+                    if (!sitesRef.current.length) {
                       const fresh = defaultConfig("Invito");
                       setSites([fresh]);
                       setActive(fresh.id);
                       setActiveId(fresh.id);
                       void persist(fresh);
                     }
-                  }
+                  });
                 }}
-
-                className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+                className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
               >
-                Entra
+                {pinBusy ? "Verifica…" : "Entra"}
               </button>
               <button
                 onClick={() => setPinOpen(false)}
@@ -623,7 +644,7 @@ export function InviteApp({
                     setActiveId(next[0].id);
                   }
                   if (pinRef.current) {
-                    void deleteSiteFn({ data: { pin: pinRef.current, id: removed } });
+                    void deleteSiteFn({ data: { token: pinRef.current, id: removed } });
                   }
                 }}
 
