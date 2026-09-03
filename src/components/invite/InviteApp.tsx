@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Lock, Plus, RotateCcw, Volume2, VolumeX, X, Copy, Pencil, Trash2 } from "lucide-react";
 import {
@@ -198,6 +197,7 @@ export function InviteApp({
       ...site,
       id: crypto.randomUUID(),
       name: `${site.name} (copia)`,
+      slug: slugify(`${site.slug || site.name || "invito"}-copia-${Math.random().toString(36).slice(2, 6)}`),
       media,
       hotspots: site.hotspots.map((h) => ({ ...h })),
     };

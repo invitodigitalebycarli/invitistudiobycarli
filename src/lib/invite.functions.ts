@@ -71,3 +71,24 @@ export const copyMediaFn = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { path: target };
   });
+
+export const getSiteFn = createServerFn({ method: "GET" })
+  .inputValidator((data: { slug: string }) => data)
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("invite_sites")
+      .select("id, name, data");
+    if (error) throw new Error(error.message);
+    const key = data.slug.toLowerCase();
+    const row = (rows ?? []).find((r) => {
+      const d = r.data as { slug?: string } | null;
+      return r.id === key || (d?.slug ?? "").toLowerCase() === key;
+    });
+    if (!row) return null;
+    return {
+      ...(row.data as Omit<InviteConfig, "id" | "name">),
+      id: row.id,
+      name: row.name,
+    } as InviteConfig;
+  });
