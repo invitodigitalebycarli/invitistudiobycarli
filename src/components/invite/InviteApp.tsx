@@ -241,9 +241,10 @@ export function InviteApp({
         {!publicOnly && (
         <button
           onClick={() => setPinOpen(true)}
-          className={`${BADGE} fixed bottom-4 left-4 z-40 px-4 py-2 text-xs`}
+          aria-label="Area riservata"
+          className="fixed bottom-3 left-3 z-40 p-2 text-black/20 transition-opacity hover:text-black/60"
         >
-          <Lock size={14} /> Modifica
+          <Lock size={14} />
         </button>
         )}
         {!publicOnly && pinOpen && (
@@ -458,15 +459,23 @@ export function InviteApp({
       </div>
 
       {/* Edit entry */}
-      {!publicOnly && (
-      <button
-        onClick={() => (editMode ? setEditMode(false) : setPinOpen(true))}
-        className={`${BADGE} fixed bottom-4 left-4 z-40 px-4 py-2 text-xs`}
-      >
-        {editMode ? <X size={14} /> : <Lock size={14} />}
-        {editMode ? "Chiudi editor" : "Modifica"}
-      </button>
-      )}
+      {!publicOnly &&
+        (editMode ? (
+          <button
+            onClick={() => setEditMode(false)}
+            className={`${BADGE} fixed bottom-4 left-4 z-40 px-4 py-2 text-xs`}
+          >
+            <X size={14} /> Chiudi editor
+          </button>
+        ) : (
+          <button
+            onClick={() => setPinOpen(true)}
+            aria-label="Area riservata"
+            className="fixed bottom-3 left-3 z-40 p-2 text-black/20 transition-opacity hover:text-black/60"
+          >
+            <Lock size={14} />
+          </button>
+        ))}
 
       {!publicOnly && pinOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">
