@@ -18,8 +18,13 @@ import {
   verifyPinFn,
 } from "@/lib/invite.functions";
 import { supabase } from "@/integrations/supabase/client";
+import logoImg from "@/assets/logo.png";
 
+// Logo e link del logo sono fissi: non modificabili dall'editor.
+const LOGO_SRC = logoImg;
+const LOGO_LINK = "https://instagram.com/invitodigitalebycarli";
 
+const FADE_MS = 1800;
 
 const BADGE =
   "badge-glass inline-flex items-center justify-center gap-2 transition-transform active:scale-95";
@@ -29,7 +34,6 @@ const MEDIA_LABELS: { key: MediaKey; label: string; accept: string }[] = [
   { key: "video", label: "Video animazione", accept: "video/*" },
   { key: "invite", label: "Invito finale (immagine)", accept: "image/*" },
   { key: "dresscode", label: "Dresscode (immagine)", accept: "image/*" },
-  { key: "logo", label: "Logo", accept: "image/*" },
   { key: "music", label: "Musica (audio)", accept: "audio/*,*/*" },
 ];
 
