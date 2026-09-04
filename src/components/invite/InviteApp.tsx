@@ -342,6 +342,9 @@ export function InviteApp({
 
 
   const showInvite = scene === "invite";
+  // Solo l'editor sbloccato vede/trascina gli hotspot, anche a pannello chiuso.
+  const editable = unlocked && !publicOnly;
+
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-black">
