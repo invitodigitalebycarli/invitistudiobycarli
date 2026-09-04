@@ -43,6 +43,8 @@ export function InviteApp({
   const [sites, setSites] = useState<InviteConfig[]>(initialSite ? [initialSite] : []);
   const [activeId, setActive] = useState<string | null>(initialSite?.id ?? null);
   const [editMode, setEditMode] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
+
   const [pinOpen, setPinOpen] = useState(false);
   const [pinValue, setPinValue] = useState("");
   const [scene, setScene] = useState<"cover" | "video" | "invite">("cover");
