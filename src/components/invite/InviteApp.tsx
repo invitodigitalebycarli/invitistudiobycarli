@@ -531,10 +531,27 @@ export function InviteApp({
           </button>
         ))}
 
+      {/* Salva (solo editor): richiede il PIN ogni volta */}
+      {editable && (
+        <button
+          onClick={() => {
+            pinMode.current = "save";
+            setPinError(false);
+            setPinValue("");
+            setPinOpen(true);
+          }}
+          className={`${BADGE} fixed bottom-4 left-1/2 z-40 -translate-x-1/2 px-4 py-2 text-xs`}
+        >
+          Salva
+        </button>
+      )}
+
       {!publicOnly && pinOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">
           <div className="w-full max-w-xs rounded-2xl bg-background p-5 text-foreground shadow-2xl">
-            <h2 className="text-base font-semibold">Inserisci il PIN</h2>
+            <h2 className="text-base font-semibold">
+              {pinMode.current === "save" ? "Conferma con il PIN" : "Inserisci il PIN"}
+            </h2>
             <input
               value={pinValue}
               onChange={(e) => setPinValue(e.target.value)}
@@ -550,7 +567,13 @@ export function InviteApp({
               <button
                 disabled={pinBusy}
                 onClick={() => {
+                  const saving = pinMode.current === "save";
                   void tryUnlock(() => {
+                    if (saving) {
+                      const current = sitesRef.current.find((s) => s.id === activeId);
+                      if (current) void persist(current);
+                      return;
+                    }
                     if (!sitesRef.current.length) {
                       const fresh = defaultConfig("Invito");
                       setSites([fresh]);
@@ -558,11 +581,11 @@ export function InviteApp({
                       setActiveId(fresh.id);
                       void persist(fresh);
                     }
-                  });
+                  }, !saving);
                 }}
                 className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
               >
-                {pinBusy ? "Verifica…" : "Entra"}
+                {pinBusy ? "Verifica…" : pinMode.current === "save" ? "Salva" : "Entra"}
               </button>
               <button
                 onClick={() => setPinOpen(false)}
@@ -574,6 +597,7 @@ export function InviteApp({
           </div>
         </div>
       )}
+
 
       {editMode && (
         <aside className="fixed right-0 top-0 z-40 h-full w-[340px] max-w-[90vw] overflow-y-auto border-l border-border bg-background p-4 text-foreground shadow-2xl">
