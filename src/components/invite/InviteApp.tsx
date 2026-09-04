@@ -256,9 +256,10 @@ export function InviteApp({
   };
 
 
-  // Hotspot dragging (edit mode only)
+  // Hotspot dragging (solo per l'editor, anche fuori dal pannello)
   useEffect(() => {
-    if (!editMode) return;
+    if (!unlocked || publicOnly) return;
+
     const move = (e: PointerEvent) => {
       const id = dragRef.current;
       const el = stageRef.current;
