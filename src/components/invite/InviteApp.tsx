@@ -43,6 +43,8 @@ export function InviteApp({
   const [sites, setSites] = useState<InviteConfig[]>(initialSite ? [initialSite] : []);
   const [activeId, setActive] = useState<string | null>(initialSite?.id ?? null);
   const [editMode, setEditMode] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
+
   const [pinOpen, setPinOpen] = useState(false);
   const [pinValue, setPinValue] = useState("");
   const [scene, setScene] = useState<"cover" | "video" | "invite">("cover");
@@ -61,30 +63,40 @@ export function InviteApp({
   const [pinBusy, setPinBusy] = useState(false);
 
   // The PIN is verified only on the server; the client keeps just an opaque session token.
-  const tryUnlock = useCallback(async (onSuccess?: () => void) => {
-    if (pinBusy) return;
-    setPinBusy(true);
-    setPinError(false);
-    try {
-      const { token } = await verifyPinFn({ data: { pin: pinValue } });
-      pinRef.current = token;
-      setPinOpen(false);
-      setPinValue("");
-      setEditMode(true);
-      onSuccess?.();
-    } catch {
-      setPinError(true);
-    } finally {
-      setPinBusy(false);
-    }
-  }, [pinBusy, pinValue]);
+  const tryUnlock = useCallback(
+    async (onSuccess?: () => void, openEditor = true) => {
+      if (pinBusy) return;
+      setPinBusy(true);
+      setPinError(false);
+      try {
+        const { token } = await verifyPinFn({ data: { pin: pinValue } });
+        pinRef.current = token;
+        setPinOpen(false);
+        setPinValue("");
+        setUnlocked(true);
+        if (openEditor) setEditMode(true);
+        onSuccess?.();
+      } catch {
+        setPinError(true);
+      } finally {
+        setPinBusy(false);
+      }
+    },
+    [pinBusy, pinValue],
+  );
+  const pinMode = useRef<"editor" | "save">("editor");
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unlockTap = () => {
+    if (unlocked) {
+      setEditMode(true);
+      return;
+    }
     tapCount.current += 1;
     if (tapTimer.current) clearTimeout(tapTimer.current);
     if (tapCount.current >= 5) {
       tapCount.current = 0;
+      pinMode.current = "editor";
       setPinOpen(true);
       return;
     }
@@ -92,6 +104,7 @@ export function InviteApp({
       tapCount.current = 0;
     }, 2000);
   };
+
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sitesRef = useRef<InviteConfig[]>([]);
   sitesRef.current = sites;
@@ -194,27 +207,27 @@ export function InviteApp({
   const onVideoEnd = () => {
     setScene("invite");
     setInviteVisible(true);
-    setTimeout(() => setVideoVisible(false), 3500);
+    setTimeout(() => setVideoVisible(false), 6000);
   };
 
   const replay = () => {
-    setInviteVisible(false);
+    // Reset immediato: nessuna dissolvenza che resta bloccata a metà.
     setDresscodeOpen(false);
-    setTimeout(() => {
-      setScene("cover");
-      setVideoVisible(false);
-      const v = videoRef.current;
-      if (v) {
-        v.pause();
-        v.currentTime = 0;
-      }
-      const a = audioRef.current;
-      if (a) {
-        a.pause();
-        a.currentTime = 0;
-      }
-    }, 1200);
+    setInviteVisible(false);
+    setVideoVisible(false);
+    setScene("cover");
+    const v = videoRef.current;
+    if (v) {
+      v.pause();
+      v.currentTime = 0;
+    }
+    const a = audioRef.current;
+    if (a) {
+      a.pause();
+      a.currentTime = 0;
+    }
   };
+
 
   const onDuplicate = async () => {
     if (!site || !pinRef.current) return;
@@ -243,9 +256,10 @@ export function InviteApp({
   };
 
 
-  // Hotspot dragging (edit mode only)
+  // Hotspot dragging (solo per l'editor, anche fuori dal pannello)
   useEffect(() => {
-    if (!editMode) return;
+    if (!unlocked || publicOnly) return;
+
     const move = (e: PointerEvent) => {
       const id = dragRef.current;
       const el = stageRef.current;
@@ -268,7 +282,7 @@ export function InviteApp({
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     };
-  }, [editMode, site, update]);
+  }, [unlocked, publicOnly, site, update]);
 
   if (!site)
     return (
@@ -328,6 +342,9 @@ export function InviteApp({
 
 
   const showInvite = scene === "invite";
+  // Solo l'editor sbloccato vede/trascina gli hotspot, anche a pannello chiuso.
+  const editable = unlocked && !publicOnly;
+
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-black">
@@ -362,7 +379,7 @@ export function InviteApp({
             playsInline
             preload="auto"
             onEnded={onVideoEnd}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[600ms] ${
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[2200ms] ease-in-out ${
               videoVisible ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           />
@@ -374,7 +391,7 @@ export function InviteApp({
             <img
               src={invite}
               alt="Invito"
-              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[3500ms] ease-out ${
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[6000ms] ease-in-out ${
                 inviteVisible ? "opacity-100" : "opacity-0"
               }`}
             />
@@ -388,15 +405,15 @@ export function InviteApp({
           ))}
 
         {/* Hotspots */}
-        {(showInvite || editMode) &&
+        {(showInvite || editable) &&
           site.hotspots.map((h) => (
             <button
               key={h.id}
               onPointerDown={() => {
-                if (editMode) dragRef.current = h.id;
+                if (editable) dragRef.current = h.id;
               }}
               onClick={() => {
-                if (editMode) return;
+                if (editable) return;
                 if (h.action === "dresscode") setDresscodeOpen(true);
                 else if (h.url) window.open(h.url, "_blank", "noopener");
               }}
@@ -408,14 +425,15 @@ export function InviteApp({
                 transform: "translate(-50%, -50%)",
               }}
               className={`absolute rounded-full active:opacity-40 ${
-                editMode
+                editable
                   ? "z-30 cursor-move border-2 border-dashed border-black/60 bg-white/40 text-[10px] font-semibold text-black"
                   : "z-10"
               }`}
             >
-              {editMode ? h.label : null}
+              {editable ? h.label : null}
             </button>
           ))}
+
 
         {/* Cover tap */}
         {scene === "cover" && !editMode && (
@@ -513,10 +531,27 @@ export function InviteApp({
           </button>
         ))}
 
+      {/* Salva (solo editor): richiede il PIN ogni volta */}
+      {editable && (
+        <button
+          onClick={() => {
+            pinMode.current = "save";
+            setPinError(false);
+            setPinValue("");
+            setPinOpen(true);
+          }}
+          className={`${BADGE} fixed bottom-4 left-1/2 z-40 -translate-x-1/2 px-4 py-2 text-xs`}
+        >
+          Salva
+        </button>
+      )}
+
       {!publicOnly && pinOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">
           <div className="w-full max-w-xs rounded-2xl bg-background p-5 text-foreground shadow-2xl">
-            <h2 className="text-base font-semibold">Inserisci il PIN</h2>
+            <h2 className="text-base font-semibold">
+              {pinMode.current === "save" ? "Conferma con il PIN" : "Inserisci il PIN"}
+            </h2>
             <input
               value={pinValue}
               onChange={(e) => setPinValue(e.target.value)}
@@ -532,7 +567,13 @@ export function InviteApp({
               <button
                 disabled={pinBusy}
                 onClick={() => {
+                  const saving = pinMode.current === "save";
                   void tryUnlock(() => {
+                    if (saving) {
+                      const current = sitesRef.current.find((s) => s.id === activeId);
+                      if (current) void persist(current);
+                      return;
+                    }
                     if (!sitesRef.current.length) {
                       const fresh = defaultConfig("Invito");
                       setSites([fresh]);
@@ -540,11 +581,11 @@ export function InviteApp({
                       setActiveId(fresh.id);
                       void persist(fresh);
                     }
-                  });
+                  }, !saving);
                 }}
                 className="flex-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
               >
-                {pinBusy ? "Verifica…" : "Entra"}
+                {pinBusy ? "Verifica…" : pinMode.current === "save" ? "Salva" : "Entra"}
               </button>
               <button
                 onClick={() => setPinOpen(false)}
@@ -556,6 +597,7 @@ export function InviteApp({
           </div>
         </div>
       )}
+
 
       {editMode && (
         <aside className="fixed right-0 top-0 z-40 h-full w-[340px] max-w-[90vw] overflow-y-auto border-l border-border bg-background p-4 text-foreground shadow-2xl">
