@@ -63,30 +63,40 @@ export function InviteApp({
   const [pinBusy, setPinBusy] = useState(false);
 
   // The PIN is verified only on the server; the client keeps just an opaque session token.
-  const tryUnlock = useCallback(async (onSuccess?: () => void) => {
-    if (pinBusy) return;
-    setPinBusy(true);
-    setPinError(false);
-    try {
-      const { token } = await verifyPinFn({ data: { pin: pinValue } });
-      pinRef.current = token;
-      setPinOpen(false);
-      setPinValue("");
-      setEditMode(true);
-      onSuccess?.();
-    } catch {
-      setPinError(true);
-    } finally {
-      setPinBusy(false);
-    }
-  }, [pinBusy, pinValue]);
+  const tryUnlock = useCallback(
+    async (onSuccess?: () => void, openEditor = true) => {
+      if (pinBusy) return;
+      setPinBusy(true);
+      setPinError(false);
+      try {
+        const { token } = await verifyPinFn({ data: { pin: pinValue } });
+        pinRef.current = token;
+        setPinOpen(false);
+        setPinValue("");
+        setUnlocked(true);
+        if (openEditor) setEditMode(true);
+        onSuccess?.();
+      } catch {
+        setPinError(true);
+      } finally {
+        setPinBusy(false);
+      }
+    },
+    [pinBusy, pinValue],
+  );
+  const pinMode = useRef<"editor" | "save">("editor");
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unlockTap = () => {
+    if (unlocked) {
+      setEditMode(true);
+      return;
+    }
     tapCount.current += 1;
     if (tapTimer.current) clearTimeout(tapTimer.current);
     if (tapCount.current >= 5) {
       tapCount.current = 0;
+      pinMode.current = "editor";
       setPinOpen(true);
       return;
     }
@@ -94,6 +104,7 @@ export function InviteApp({
       tapCount.current = 0;
     }, 2000);
   };
+
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sitesRef = useRef<InviteConfig[]>([]);
   sitesRef.current = sites;
