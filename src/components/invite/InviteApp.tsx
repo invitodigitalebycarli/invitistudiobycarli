@@ -376,7 +376,7 @@ export function InviteApp({
             playsInline
             preload="auto"
             onEnded={onVideoEnd}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[600ms] ${
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[2200ms] ease-in-out ${
               videoVisible ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           />
@@ -388,7 +388,7 @@ export function InviteApp({
             <img
               src={invite}
               alt="Invito"
-              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[3500ms] ease-out ${
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[6000ms] ease-in-out ${
                 inviteVisible ? "opacity-100" : "opacity-0"
               }`}
             />
@@ -402,15 +402,15 @@ export function InviteApp({
           ))}
 
         {/* Hotspots */}
-        {(showInvite || editMode) &&
+        {(showInvite || editable) &&
           site.hotspots.map((h) => (
             <button
               key={h.id}
               onPointerDown={() => {
-                if (editMode) dragRef.current = h.id;
+                if (editable) dragRef.current = h.id;
               }}
               onClick={() => {
-                if (editMode) return;
+                if (editable) return;
                 if (h.action === "dresscode") setDresscodeOpen(true);
                 else if (h.url) window.open(h.url, "_blank", "noopener");
               }}
@@ -422,14 +422,15 @@ export function InviteApp({
                 transform: "translate(-50%, -50%)",
               }}
               className={`absolute rounded-full active:opacity-40 ${
-                editMode
+                editable
                   ? "z-30 cursor-move border-2 border-dashed border-black/60 bg-white/40 text-[10px] font-semibold text-black"
                   : "z-10"
               }`}
             >
-              {editMode ? h.label : null}
+              {editable ? h.label : null}
             </button>
           ))}
+
 
         {/* Cover tap */}
         {scene === "cover" && !editMode && (
