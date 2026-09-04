@@ -207,27 +207,27 @@ export function InviteApp({
   const onVideoEnd = () => {
     setScene("invite");
     setInviteVisible(true);
-    setTimeout(() => setVideoVisible(false), 3500);
+    setTimeout(() => setVideoVisible(false), 6000);
   };
 
   const replay = () => {
-    setInviteVisible(false);
+    // Reset immediato: nessuna dissolvenza che resta bloccata a metà.
     setDresscodeOpen(false);
-    setTimeout(() => {
-      setScene("cover");
-      setVideoVisible(false);
-      const v = videoRef.current;
-      if (v) {
-        v.pause();
-        v.currentTime = 0;
-      }
-      const a = audioRef.current;
-      if (a) {
-        a.pause();
-        a.currentTime = 0;
-      }
-    }, 1200);
+    setInviteVisible(false);
+    setVideoVisible(false);
+    setScene("cover");
+    const v = videoRef.current;
+    if (v) {
+      v.pause();
+      v.currentTime = 0;
+    }
+    const a = audioRef.current;
+    if (a) {
+      a.pause();
+      a.currentTime = 0;
+    }
   };
+
 
   const onDuplicate = async () => {
     if (!site || !pinRef.current) return;
