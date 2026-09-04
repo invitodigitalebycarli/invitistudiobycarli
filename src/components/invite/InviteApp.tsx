@@ -282,7 +282,7 @@ export function InviteApp({
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     };
-  }, [editMode, site, update]);
+  }, [unlocked, publicOnly, site, update]);
 
   if (!site)
     return (
