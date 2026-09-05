@@ -35,6 +35,7 @@ const MEDIA_LABELS: { key: MediaKey; label: string; accept: string }[] = [
   { key: "invite", label: "Invito finale (immagine)", accept: "image/*" },
   { key: "dresscode", label: "Dresscode (immagine)", accept: "image/*" },
   { key: "music", label: "Musica (audio)", accept: "audio/*,*/*" },
+  { key: "social", label: "Copertina anteprima social", accept: "image/*" },
 ];
 
 export function InviteApp({
@@ -56,6 +57,8 @@ export function InviteApp({
   const [muted, setMuted] = useState(false);
   const [inviteVisible, setInviteVisible] = useState(false);
   const [videoVisible, setVideoVisible] = useState(false);
+  const [dresscodeMounted, setDresscodeMounted] = useState(false);
+  const [dresscodeVisible, setDresscodeVisible] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -134,8 +137,19 @@ export function InviteApp({
   const video = mediaUrl(site?.media.video);
   const invite = mediaUrl(site?.media.invite);
   const dresscode = mediaUrl(site?.media.dresscode);
-  const logo = mediaUrl(site?.media.logo);
   const music = mediaUrl(site?.media.music);
+
+  // Dissolvenza di apertura/chiusura della finestra dresscode
+  useEffect(() => {
+    if (dresscodeOpen) {
+      setDresscodeMounted(true);
+      const id = requestAnimationFrame(() => setDresscodeVisible(true));
+      return () => cancelAnimationFrame(id);
+    }
+    setDresscodeVisible(false);
+    const t = setTimeout(() => setDresscodeMounted(false), FADE_MS);
+    return () => clearTimeout(t);
+  }, [dresscodeOpen]);
 
   const persist = useCallback(async (next: InviteConfig) => {
     if (!pinRef.current) return;
@@ -198,7 +212,8 @@ export function InviteApp({
       }
     } else {
       setScene("invite");
-      setInviteVisible(true);
+      setInviteVisible(false);
+      requestAnimationFrame(() => requestAnimationFrame(() => setInviteVisible(true)));
     }
     const a = audioRef.current;
     if (a) {
@@ -210,26 +225,35 @@ export function InviteApp({
 
   const onVideoEnd = () => {
     setScene("invite");
-    setInviteVisible(true);
-    setTimeout(() => setVideoVisible(false), 6000);
+    setInviteVisible(false);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        setInviteVisible(true);
+        setVideoVisible(false);
+      }),
+    );
   };
 
+  const replayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const replay = () => {
-    // Reset immediato: nessuna dissolvenza che resta bloccata a metà.
+    // Dissolvenza fluida in uscita, poi reset completo.
     setDresscodeOpen(false);
     setInviteVisible(false);
     setVideoVisible(false);
-    setScene("cover");
-    const v = videoRef.current;
-    if (v) {
-      v.pause();
-      v.currentTime = 0;
-    }
-    const a = audioRef.current;
-    if (a) {
-      a.pause();
-      a.currentTime = 0;
-    }
+    if (replayTimer.current) clearTimeout(replayTimer.current);
+    replayTimer.current = setTimeout(() => {
+      setScene("cover");
+      const v = videoRef.current;
+      if (v) {
+        v.pause();
+        v.currentTime = 0;
+      }
+      const a = audioRef.current;
+      if (a) {
+        a.pause();
+        a.currentTime = 0;
+      }
+    }, FADE_MS);
   };
 
 
@@ -383,7 +407,8 @@ export function InviteApp({
             playsInline
             preload="auto"
             onEnded={onVideoEnd}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[2200ms] ease-in-out ${
+            style={{ transitionDuration: `${FADE_MS}ms` }}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out ${
               videoVisible ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           />
@@ -395,7 +420,8 @@ export function InviteApp({
             <img
               src={invite}
               alt="Invito"
-              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[6000ms] ease-in-out ${
+              style={{ transitionDuration: `${FADE_MS}ms` }}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out ${
                 inviteVisible ? "opacity-100" : "opacity-0"
               }`}
             />
@@ -472,10 +498,13 @@ export function InviteApp({
         )}
 
         {/* Dresscode overlay */}
-        {dresscodeOpen && (
+        {dresscodeMounted && (
           <div
             onClick={() => setDresscodeOpen(false)}
-            className="absolute inset-0 z-20 flex animate-fade-in items-center justify-center bg-black/70 px-5 backdrop-blur-sm"
+            style={{ transitionDuration: `${FADE_MS}ms` }}
+            className={`absolute inset-0 z-20 flex items-center justify-center bg-black/70 px-5 backdrop-blur-sm transition-opacity ease-in-out ${
+              dresscodeVisible ? "opacity-100" : "pointer-events-none opacity-0"
+            }`}
           >
             {dresscode ? (
               <img
@@ -496,21 +525,15 @@ export function InviteApp({
           </div>
         )}
 
-        {/* Footer logo */}
+        {/* Footer logo (fisso, non modificabile) */}
         <a
-          href={site.instagram}
+          href={LOGO_LINK}
           target="_blank"
           rel="noopener noreferrer"
           className="absolute bottom-3 right-3 z-10 block h-7 w-7 overflow-hidden rounded-full shadow-md shadow-black/30 ring-1 ring-white/60"
-          aria-label="Instagram"
+          aria-label="Invito Digitale by Carli"
         >
-          {logo ? (
-            <img src={logo} alt="Logo" className="h-full w-full object-cover" />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center bg-black/40 text-white">
-              <Plus size={14} />
-            </span>
-          )}
+          <img src={LOGO_SRC} alt="Logo" className="h-full w-full object-cover" />
         </a>
 
         {music && <audio ref={audioRef} src={music} loop />}
@@ -576,6 +599,14 @@ export function InviteApp({
                     if (saving) {
                       const current = sitesRef.current.find((s) => s.id === activeId);
                       if (current) void persist(current);
+                      // Dopo il salvataggio: torna alla versione invitati.
+                      setEditMode(false);
+                      setUnlocked(false);
+                      pinRef.current = "";
+                      setDresscodeOpen(false);
+                      setInviteVisible(false);
+                      setVideoVisible(false);
+                      setScene("cover");
                       return;
                     }
                     if (!sitesRef.current.length) {
@@ -818,12 +849,6 @@ export function InviteApp({
             value={site.texts.replay}
             onChange={(e) => update({ texts: { ...site.texts, replay: e.target.value } })}
             className="mt-2 w-full rounded-md border border-input px-2 py-1.5 text-sm"
-          />
-          <input
-            value={site.instagram}
-            onChange={(e) => update({ instagram: e.target.value })}
-            className="mt-2 w-full rounded-md border border-input px-2 py-1.5 text-sm"
-            placeholder="Link logo / Instagram"
           />
           <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
             Le modifiche e i file sono salvati online: chi apre il sito pubblicato vede tutto,

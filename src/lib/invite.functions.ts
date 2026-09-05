@@ -105,9 +105,19 @@ export const getSiteFn = createServerFn({ method: "GET" })
       return r.id === key || (d?.slug ?? "").toLowerCase() === key;
     });
     if (!row) return null;
+    let origin = "";
+    try {
+      const { getRequestUrl } = await import("@tanstack/react-start/server");
+      origin = new URL(getRequestUrl()).origin;
+    } catch {
+      origin = "";
+    }
     return {
-      ...(row.data as Omit<InviteConfig, "id" | "name">),
-      id: row.id,
-      name: row.name,
-    } as InviteConfig;
+      site: {
+        ...(row.data as Omit<InviteConfig, "id" | "name">),
+        id: row.id,
+        name: row.name,
+      } as InviteConfig,
+      origin,
+    };
   });
