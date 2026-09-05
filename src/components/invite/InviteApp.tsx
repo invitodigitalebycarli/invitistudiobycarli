@@ -372,7 +372,6 @@ export function InviteApp({
     <main className="fixed inset-0 overflow-hidden bg-black">
       <div
         ref={stageRef}
-        style={{ ["--fade" as string]: `${FADE_MS}ms` }}
         className="relative mx-auto h-full w-full max-w-[calc(100dvh*9/16)] bg-white"
       >
         {/* Cover */}
@@ -402,7 +401,8 @@ export function InviteApp({
             playsInline
             preload="auto"
             onEnded={onVideoEnd}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[var(--fade)] ease-in-out ${
+            style={{ transitionDuration: `${FADE_MS}ms` }}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out ${
               videoVisible ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           />
@@ -414,7 +414,8 @@ export function InviteApp({
             <img
               src={invite}
               alt="Invito"
-              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[var(--fade)] ease-in-out ${
+              style={{ transitionDuration: `${FADE_MS}ms` }}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out ${
                 inviteVisible ? "opacity-100" : "opacity-0"
               }`}
             />
