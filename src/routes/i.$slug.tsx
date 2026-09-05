@@ -4,9 +4,9 @@ import { getSiteFn } from "@/lib/invite.functions";
 
 export const Route = createFileRoute("/i/$slug")({
   loader: async ({ params }) => {
-    const site = await getSiteFn({ data: { slug: params.slug } });
-    if (!site) throw notFound();
-    return { site };
+    const res = await getSiteFn({ data: { slug: params.slug } });
+    if (!res) throw notFound();
+    return res;
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
@@ -16,6 +16,13 @@ export const Route = createFileRoute("/i/$slug")({
     }
     const title = loaderData.site.name || "Invito";
     const description = "Apri il tuo invito digitale: video, dettagli, dresscode e conferma.";
+    const socialPath = loaderData.site.media?.social ?? loaderData.site.media?.poster;
+    const image =
+      socialPath && loaderData.origin
+        ? /^https?:\/\//.test(socialPath)
+          ? socialPath
+          : `${loaderData.origin}/api/public/media/${socialPath}`
+        : null;
     return {
       meta: [
         { title },
@@ -24,6 +31,12 @@ export const Route = createFileRoute("/i/$slug")({
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
         { name: "twitter:card", content: "summary_large_image" },
+        ...(image
+          ? [
+              { property: "og:image", content: image },
+              { name: "twitter:image", content: image },
+            ]
+          : []),
       ],
     };
   },
