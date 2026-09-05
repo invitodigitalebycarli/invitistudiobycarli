@@ -212,7 +212,8 @@ export function InviteApp({
       }
     } else {
       setScene("invite");
-      setInviteVisible(true);
+      setInviteVisible(false);
+      requestAnimationFrame(() => requestAnimationFrame(() => setInviteVisible(true)));
     }
     const a = audioRef.current;
     if (a) {
@@ -224,8 +225,13 @@ export function InviteApp({
 
   const onVideoEnd = () => {
     setScene("invite");
-    setInviteVisible(true);
-    setVideoVisible(false);
+    setInviteVisible(false);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        setInviteVisible(true);
+        setVideoVisible(false);
+      }),
+    );
   };
 
   const replayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
