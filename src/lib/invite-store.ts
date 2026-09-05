@@ -1,7 +1,14 @@
 // Shared types + helpers for the invite template. Data lives in Lovable Cloud
 // (table `invite_sites`), media files in the `invite-media` storage bucket.
 
-export type MediaKey = "poster" | "video" | "invite" | "dresscode" | "logo" | "music";
+export type MediaKey =
+  | "poster"
+  | "video"
+  | "invite"
+  | "dresscode"
+  | "logo"
+  | "music"
+  | "social";
 
 export type Hotspot = {
   id: string;
