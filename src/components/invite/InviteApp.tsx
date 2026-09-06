@@ -348,7 +348,7 @@ export function InviteApp({
                 placeholder="PIN"
               />
               {pinError && (
-                <p className="mt-2 text-xs text-red-500">PIN non valido. Riprova.</p>
+                <p className="mt-2 text-xs text-red-500">Credenziali non valide. Riprova.</p>
               )}
               <div className="mt-4 flex gap-2">
                 <button
@@ -612,7 +612,7 @@ export function InviteApp({
               placeholder="PIN"
             />
             {pinError && (
-              <p className="mt-2 text-xs text-red-500">PIN non valido. Riprova.</p>
+              <p className="mt-2 text-xs text-red-500">Credenziali non valide. Riprova.</p>
             )}
             <div className="mt-4 flex gap-2">
               <button
