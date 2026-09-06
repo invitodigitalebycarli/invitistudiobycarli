@@ -594,8 +594,15 @@ export function InviteApp({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">
           <div className="w-full max-w-xs rounded-2xl bg-background p-5 text-foreground shadow-2xl">
             <h2 className="text-base font-semibold">
-              {pinMode.current === "save" ? "Conferma con il PIN" : "Inserisci il PIN"}
+              {pinMode.current === "save" ? "Conferma per salvare" : "Accesso riservato"}
             </h2>
+            <input
+              value={pinUser}
+              onChange={(e) => setPinUser(e.target.value)}
+              autoComplete="off"
+              className="mt-3 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              placeholder="Utente"
+            />
             <input
               value={pinValue}
               onChange={(e) => setPinValue(e.target.value)}
