@@ -419,7 +419,7 @@ export function InviteApp({
             preload="auto"
             onEnded={onVideoEnd}
             style={{ transitionDuration: videoVisible ? "0ms" : `${FADE_MS}ms` }}
-            className={`absolute inset-0 h-full w-full object-contain transition-opacity ease-in-out ${
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out ${
               videoVisible ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           />
