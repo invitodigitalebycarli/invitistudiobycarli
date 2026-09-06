@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Lock, Plus, RotateCcw, X, Copy, Pencil, Trash2 } from "lucide-react";
+import { Lock, Plus, RotateCcw, X, Copy, Pencil, Trash2, Maximize2 } from "lucide-react";
 import {
   type InviteConfig,
   type MediaKey,
@@ -73,6 +73,16 @@ export function InviteApp({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<string | null>(null);
+  // { id, startX, startY, startW, startH, stageW, stageH }
+  const resizeDragRef = useRef<{
+    id: string;
+    startX: number;
+    startY: number;
+    startW: number;
+    startH: number;
+    stageW: number;
+    stageH: number;
+  } | null>(null);
 
   const pinRef = useRef<string>("");
   const [pinError, setPinError] = useState(false);
@@ -322,15 +332,33 @@ export function InviteApp({
   };
 
 
-  // Hotspot dragging (solo per l'editor, anche fuori dal pannello)
+  // Hotspot dragging + resizing (solo per l'editor, anche fuori dal pannello)
   useEffect(() => {
     if (!unlocked || publicOnly) return;
 
     const move = (e: PointerEvent) => {
-      const id = dragRef.current;
       const el = stageRef.current;
-      if (!id || !el || !site) return;
+      if (!el || !site) return;
       const rect = el.getBoundingClientRect();
+
+      // Resize
+      const rd = resizeDragRef.current;
+      if (rd) {
+        const dx = ((e.clientX - rd.startX) / rd.stageW) * 100;
+        const dy = ((e.clientY - rd.startY) / rd.stageH) * 100;
+        const newW = Math.min(80, Math.max(4, rd.startW + dx * 2));
+        const newH = Math.min(40, Math.max(2, rd.startH + dy * 2));
+        update({
+          hotspots: site.hotspots.map((h) =>
+            h.id === rd.id ? { ...h, width: newW, height: newH } : h,
+          ),
+        });
+        return;
+      }
+
+      // Drag
+      const id = dragRef.current;
+      if (!id) return;
       const left = ((e.clientX - rect.left) / rect.width) * 100;
       const top = ((e.clientY - rect.top) / rect.height) * 100;
       update({
@@ -341,7 +369,10 @@ export function InviteApp({
         ),
       });
     };
-    const up = () => (dragRef.current = null);
+    const up = () => {
+      dragRef.current = null;
+      resizeDragRef.current = null;
+    };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     return () => {
@@ -487,31 +518,71 @@ export function InviteApp({
         {/* Hotspots */}
         {(showInvite || editable) &&
           site.hotspots.map((h) => (
-            <button
+            <div
               key={h.id}
-              onPointerDown={() => {
-                if (editable) dragRef.current = h.id;
-              }}
-              onClick={() => {
-                if (editable) return;
-                if (h.action === "dresscode") setDresscodeOpen(true);
-                else if (h.url) window.open(h.url, "_blank", "noopener");
-              }}
               style={{
                 left: `${h.left}%`,
                 top: `${h.top}%`,
                 width: `${h.width}%`,
                 height: `${h.height}%`,
                 transform: "translate(-50%, -50%)",
+                position: "absolute",
               }}
-              className={`absolute rounded-full active:opacity-40 ${
-                editable
-                  ? "z-30 cursor-move border-2 border-dashed border-black/60 bg-white/40 text-[10px] font-semibold text-black"
-                  : "z-10"
-              }`}
+              className={editable ? "z-30" : "z-10"}
             >
-              {editable ? h.label : null}
-            </button>
+              <button
+                onPointerDown={(e) => {
+                  if (editable) {
+                    e.stopPropagation();
+                    dragRef.current = h.id;
+                  }
+                }}
+                onClick={() => {
+                  if (editable) return;
+                  if (h.action === "dresscode") setDresscodeOpen(true);
+                  else if (h.url) window.open(h.url, "_blank", "noopener");
+                }}
+                style={{ width: "100%", height: "100%" }}
+                className={`rounded-full active:opacity-40 ${
+                  editable
+                    ? "cursor-move border-2 border-dashed border-black/60 bg-white/40 text-[10px] font-semibold text-black"
+                    : ""
+                }`}
+              >
+                {editable ? h.label : null}
+              </button>
+              {/* Resize handle – bottom-right corner, only in edit mode */}
+              {editable && (
+                <div
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    const stage = stageRef.current;
+                    if (!stage) return;
+                    const rect = stage.getBoundingClientRect();
+                    resizeDragRef.current = {
+                      id: h.id,
+                      startX: e.clientX,
+                      startY: e.clientY,
+                      startW: h.width,
+                      startH: h.height,
+                      stageW: rect.width,
+                      stageH: rect.height,
+                    };
+                  }}
+                  style={{
+                    position: "absolute",
+                    bottom: "-6px",
+                    right: "-6px",
+                    width: "16px",
+                    height: "16px",
+                    cursor: "se-resize",
+                  }}
+                  className="flex items-center justify-center rounded-full bg-white/80 shadow-sm border border-black/30 text-black"
+                >
+                  <Maximize2 size={8} />
+                </div>
+              )}
+            </div>
           ))}
 
 
@@ -890,20 +961,41 @@ export function InviteApp({
           <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Icone e link (trascinabili)
           </h3>
+          <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+            Trascina nell'anteprima per spostare. Usa la maniglia ↘ per ridimensionare.
+          </p>
           <div className="mt-2 space-y-3">
-            {site.hotspots.map((h) => (
-              <div key={h.id} className="rounded-md border border-input p-2">
-                <input
-                  value={h.label}
-                  onChange={(e) =>
-                    update({
-                      hotspots: site.hotspots.map((x) =>
-                        x.id === h.id ? { ...x, label: e.target.value } : x,
-                      ),
-                    })
-                  }
-                  className="w-full rounded border border-input px-2 py-1 text-xs"
-                />
+            {site.hotspots.map((h, idx) => (
+              <div key={h.id} className="rounded-md border border-input p-2 relative">
+                {/* Header row: label + remove button */}
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-[10px] font-medium text-muted-foreground w-4 shrink-0">{idx + 1}.</span>
+                  <input
+                    value={h.label}
+                    placeholder="Etichetta"
+                    onChange={(e) =>
+                      update({
+                        hotspots: site.hotspots.map((x) =>
+                          x.id === h.id ? { ...x, label: e.target.value } : x,
+                        ),
+                      })
+                    }
+                    className="flex-1 rounded border border-input px-2 py-1 text-xs"
+                  />
+                  <button
+                    type="button"
+                    title="Rimuovi icona"
+                    onClick={() =>
+                      update({
+                        hotspots: site.hotspots.filter((x) => x.id !== h.id),
+                      })
+                    }
+                    className="shrink-0 rounded border border-input p-1 text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+
                 <select
                   value={h.action}
                   onChange={(e) =>
@@ -915,7 +1007,7 @@ export function InviteApp({
                       ),
                     })
                   }
-                  className="mt-1 w-full rounded border border-input px-2 py-1 text-xs"
+                  className="w-full rounded border border-input px-2 py-1 text-xs"
                 >
                   <option value="link">Apri link</option>
                   <option value="dresscode">Apri dresscode</option>
@@ -934,35 +1026,74 @@ export function InviteApp({
                     className="mt-1 w-full rounded border border-input px-2 py-1 text-xs"
                   />
                 )}
-                <div className="mt-1 flex gap-1">
-                  <input
-                    type="number"
-                    value={h.width}
-                    onChange={(e) =>
-                      update({
-                        hotspots: site.hotspots.map((x) =>
-                          x.id === h.id ? { ...x, width: Number(e.target.value) } : x,
-                        ),
-                      })
-                    }
-                    className="w-1/2 rounded border border-input px-2 py-1 text-xs"
-                  />
-                  <input
-                    type="number"
-                    value={h.height}
-                    onChange={(e) =>
-                      update({
-                        hotspots: site.hotspots.map((x) =>
-                          x.id === h.id ? { ...x, height: Number(e.target.value) } : x,
-                        ),
-                      })
-                    }
-                    className="w-1/2 rounded border border-input px-2 py-1 text-xs"
-                  />
+
+                {/* Resize sliders */}
+                <div className="mt-2 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground w-12 shrink-0">Largh. {Math.round(h.width)}%</span>
+                    <input
+                      type="range"
+                      min={4}
+                      max={80}
+                      step={0.5}
+                      value={h.width}
+                      onChange={(e) =>
+                        update({
+                          hotspots: site.hotspots.map((x) =>
+                            x.id === h.id ? { ...x, width: Number(e.target.value) } : x,
+                          ),
+                        })
+                      }
+                      className="flex-1 accent-primary"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground w-12 shrink-0">Altezza {Math.round(h.height)}%</span>
+                    <input
+                      type="range"
+                      min={2}
+                      max={40}
+                      step={0.5}
+                      value={h.height}
+                      onChange={(e) =>
+                        update({
+                          hotspots: site.hotspots.map((x) =>
+                            x.id === h.id ? { ...x, height: Number(e.target.value) } : x,
+                          ),
+                        })
+                      }
+                      className="flex-1 accent-primary"
+                    />
+                  </div>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Add new hotspot */}
+          <button
+            type="button"
+            onClick={() =>
+              update({
+                hotspots: [
+                  ...site.hotspots,
+                  {
+                    id: crypto.randomUUID(),
+                    label: `Icona ${site.hotspots.length + 1}`,
+                    left: 50,
+                    top: 50,
+                    width: 15,
+                    height: 8.5,
+                    action: "link",
+                    url: "",
+                  },
+                ],
+              })
+            }
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-input px-3 py-2 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+          >
+            <Plus size={13} /> Aggiungi icona
+          </button>
 
           <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Testi invito
