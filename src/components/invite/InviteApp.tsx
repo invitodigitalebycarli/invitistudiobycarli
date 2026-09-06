@@ -520,7 +520,7 @@ export function InviteApp({
             playsInline
             preload="metadata"
             onEnded={onVideoEnd}
-            style={{ transitionDuration: videoVisible ? "0ms" : `${FADE_MS}ms` }}
+            style={{ transitionDuration: videoVisible ? "400ms" : `${FADE_MS}ms` }}
             className={`absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out ${
               videoVisible ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
