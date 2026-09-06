@@ -52,6 +52,7 @@ export function InviteApp({
 
   const [pinOpen, setPinOpen] = useState(false);
   const [pinValue, setPinValue] = useState("");
+  const [pinUser, setPinUser] = useState("");
   const [scene, setScene] = useState<"cover" | "video" | "invite">("cover");
   const [dresscodeOpen, setDresscodeOpen] = useState(false);
   const [muted, setMuted] = useState(false);
