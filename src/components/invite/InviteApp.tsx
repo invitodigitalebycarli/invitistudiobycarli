@@ -382,7 +382,7 @@ export function InviteApp({
     <main className="fixed inset-0 overflow-hidden bg-black">
       <div
         ref={stageRef}
-        className="relative mx-auto h-full w-full max-w-[calc(100dvh*9/16)] bg-white"
+        className="relative mx-auto h-full w-full max-w-[calc(100dvh*9/16)] overflow-hidden rounded-2xl bg-black"
       >
         {/* Cover */}
         {poster ? (
