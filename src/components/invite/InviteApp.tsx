@@ -91,7 +91,7 @@ export function InviteApp({
         setPinBusy(false);
       }
     },
-    [pinBusy, pinValue],
+    [pinBusy, pinValue, pinUser],
   );
   const pinMode = useRef<"editor" | "save">("editor");
   const tapCount = useRef(0);
