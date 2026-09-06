@@ -77,10 +77,11 @@ export function InviteApp({
       setPinBusy(true);
       setPinError(false);
       try {
-        const { token } = await verifyPinFn({ data: { pin: pinValue } });
+        const { token } = await verifyPinFn({ data: { pin: pinValue, user: pinUser } });
         pinRef.current = token;
         setPinOpen(false);
         setPinValue("");
+        setPinUser("");
         setUnlocked(true);
         if (openEditor) setEditMode(true);
         onSuccess?.();
