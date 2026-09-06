@@ -14,8 +14,10 @@ export const Route = createFileRoute("/i/$slug")({
         meta: [{ title: "Invito non disponibile" }, { name: "robots", content: "noindex" }],
       };
     }
-    const title = loaderData.site.name || "Invito";
-    const description = "Apri il tuo invito digitale: video, dettagli, dresscode e conferma.";
+    const title = loaderData.site.texts?.socialTitle || loaderData.site.name || "Invito";
+    const description =
+      loaderData.site.texts?.socialDesc ||
+      "Apri il tuo invito digitale: video, dettagli, dresscode e conferma.";
     const socialPath = loaderData.site.media?.social ?? loaderData.site.media?.poster;
     const origin =
       loaderData.origin && !loaderData.origin.includes("lovableproject.com")
@@ -36,6 +38,8 @@ export const Route = createFileRoute("/i/$slug")({
         { property: "og:type", content: "website" },
         { property: "og:site_name", content: title },
         { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
         ...(image
           ? [
               { property: "og:image", content: image },

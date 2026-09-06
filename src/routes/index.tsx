@@ -12,25 +12,22 @@ export const Route = createFileRoute("/")({
     }
   },
   head: ({ loaderData }) => {
-    const title = loaderData?.site?.name
-      ? `${loaderData.site.name} — Invito Digitale`
-      : "Invito Digitale by Carli";
+    const title =
+      loaderData?.site?.texts?.socialTitle ||
+      (loaderData?.site?.name ? `${loaderData.site.name} — Invito Digitale` : "Invito Digitale by Carli");
+    const description =
+      loaderData?.site?.texts?.socialDesc ||
+      "Apri il tuo invito digitale: immagini, video, audio, link e dresscode.";
     return {
       meta: [
         { title },
-        {
-          name: "description",
-          content:
-            "Template di invito digitale 9:16: cover, video animato, invito finale con link, dresscode, musica e logo. Modificabile e duplicabile.",
-        },
+        { name: "description", content: description },
         { property: "og:title", content: title },
-        {
-          property: "og:description",
-          content:
-            "Crea, personalizza e duplica il tuo invito digitale: immagini, video, audio, link e dresscode.",
-        },
+        { property: "og:description", content: description },
         { property: "og:type", content: "website" },
         { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
       ],
     };
   },

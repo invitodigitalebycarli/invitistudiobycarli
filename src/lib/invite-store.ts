@@ -28,7 +28,12 @@ export type InviteConfig = {
   name: string;
   slug?: string;
   media: Partial<Record<MediaKey, string>>; // media key -> storage path
-  texts: { open: string; replay: string };
+  texts: {
+    open: string;
+    replay: string;
+    socialTitle?: string;
+    socialDesc?: string;
+  };
   instagram: string;
   hotspots: Hotspot[];
   buttonTheme?: ButtonTheme;
@@ -68,7 +73,12 @@ export function defaultConfig(name = "Invito"): InviteConfig {
     name,
     slug: slugify(`${name}-${Math.random().toString(36).slice(2, 6)}`),
     media: {},
-    texts: { open: "Tocca per aprire", replay: "Riguarda" },
+    texts: {
+      open: "Tocca per aprire",
+      replay: "Riguarda",
+      socialTitle: name,
+      socialDesc: "Apri il tuo invito digitale: video, dettagli, dresscode e conferma.",
+    },
     instagram: "https://instagram.com/invitodigitalebycarli",
     buttonTheme: "dark",
     hotspots: [

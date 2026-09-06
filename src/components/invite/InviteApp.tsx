@@ -22,6 +22,8 @@ import {
 } from "@/lib/invite.functions";
 import { supabase } from "@/integrations/supabase/client";
 import logoImg from "@/assets/logo.png";
+import appleSpeakerOn from "@/assets/apple-speaker-on.png";
+import appleSpeakerOff from "@/assets/apple-speaker-off.png";
 
 // Logo e link del logo sono fissi: non modificabili dall'editor.
 const LOGO_SRC = logoImg;
@@ -272,23 +274,23 @@ export function InviteApp({
 
   const replayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const replay = () => {
-    // Dissolvenza fluida in uscita, poi reset completo.
+    // Interrompe e azzera immediatamente l'audio al click su "Riguarda"
+    const a = audioRef.current;
+    if (a) {
+      a.pause();
+      a.currentTime = 0;
+    }
+    const v = videoRef.current;
+    if (v) {
+      v.pause();
+      v.currentTime = 0;
+    }
     setDresscodeOpen(false);
     setInviteVisible(false);
     setVideoVisible(false);
     if (replayTimer.current) clearTimeout(replayTimer.current);
     replayTimer.current = setTimeout(() => {
       setScene("cover");
-      const v = videoRef.current;
-      if (v) {
-        v.pause();
-        v.currentTime = 0;
-      }
-      const a = audioRef.current;
-      if (a) {
-        a.pause();
-        a.currentTime = 0;
-      }
     }, FADE_MS);
   };
 
@@ -548,9 +550,12 @@ export function InviteApp({
               className={`${badgeStyle} absolute right-4 top-4 z-20 h-10 w-10`}
               aria-label={muted ? "Attiva audio" : "Disattiva audio"}
             >
-              <span className="text-base select-none leading-none" role="img" aria-hidden="true">
-                {muted ? "🔇" : "🔊"}
-              </span>
+              <img
+                src={muted ? appleSpeakerOff : appleSpeakerOn}
+                alt={muted ? "🔇" : "🔊"}
+                className="h-5 w-5 object-contain select-none pointer-events-none"
+                draggable={false}
+              />
             </button>
           </>
         )}
@@ -960,17 +965,38 @@ export function InviteApp({
           </div>
 
           <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Testi
+            Testi invito
           </h3>
+          <label className="mt-2 block text-xs font-medium">Pulsante copertina</label>
           <input
             value={site.texts.open}
             onChange={(e) => update({ texts: { ...site.texts, open: e.target.value } })}
-            className="mt-2 w-full rounded-md border border-input px-2 py-1.5 text-sm"
+            className="mt-1 w-full rounded-md border border-input px-2 py-1.5 text-sm"
           />
+          <label className="mt-2 block text-xs font-medium">Pulsante riguarda</label>
           <input
             value={site.texts.replay}
             onChange={(e) => update({ texts: { ...site.texts, replay: e.target.value } })}
-            className="mt-2 w-full rounded-md border border-input px-2 py-1.5 text-sm"
+            className="mt-1 w-full rounded-md border border-input px-2 py-1.5 text-sm"
+          />
+
+          <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Anteprima Social (WhatsApp, Instagram, ecc.)
+          </h3>
+          <label className="mt-2 block text-xs font-medium">Titolo condivisione</label>
+          <input
+            value={site.texts.socialTitle ?? ""}
+            placeholder={site.name}
+            onChange={(e) => update({ texts: { ...site.texts, socialTitle: e.target.value } })}
+            className="mt-1 w-full rounded-md border border-input px-2 py-1.5 text-sm"
+          />
+          <label className="mt-2 block text-xs font-medium">Descrizione condivisione</label>
+          <textarea
+            rows={2}
+            value={site.texts.socialDesc ?? ""}
+            placeholder="Apri il tuo invito digitale: video, dettagli, dresscode e conferma."
+            onChange={(e) => update({ texts: { ...site.texts, socialDesc: e.target.value } })}
+            className="mt-1 w-full rounded-md border border-input px-2 py-1.5 text-xs"
           />
           <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
             Le modifiche e i file sono salvati online: chi apre il sito pubblicato vede tutto,
