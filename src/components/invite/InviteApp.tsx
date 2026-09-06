@@ -418,10 +418,15 @@ export function InviteApp({
 
 
   return (
-    <main className="fixed inset-0 overflow-hidden bg-black">
+    <main className="fixed inset-0 flex items-center justify-center overflow-hidden bg-black">
       <div
         ref={stageRef}
-        className="relative h-full w-full overflow-hidden bg-black"
+        style={{
+          width: "min(100vw, calc(100dvh * 9 / 16))",
+          height: "min(100dvh, calc(100vw * 16 / 9))",
+          aspectRatio: "9 / 16",
+        }}
+        className="relative overflow-hidden rounded-3xl bg-black shadow-2xl shadow-black/80"
       >
         {/* Cover */}
         {poster ? (
