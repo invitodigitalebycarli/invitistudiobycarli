@@ -52,6 +52,7 @@ export function InviteApp({
 
   const [pinOpen, setPinOpen] = useState(false);
   const [pinValue, setPinValue] = useState("");
+  const [pinUser, setPinUser] = useState("");
   const [scene, setScene] = useState<"cover" | "video" | "invite">("cover");
   const [dresscodeOpen, setDresscodeOpen] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -76,10 +77,11 @@ export function InviteApp({
       setPinBusy(true);
       setPinError(false);
       try {
-        const { token } = await verifyPinFn({ data: { pin: pinValue } });
+        const { token } = await verifyPinFn({ data: { pin: pinValue, user: pinUser } });
         pinRef.current = token;
         setPinOpen(false);
         setPinValue("");
+        setPinUser("");
         setUnlocked(true);
         if (openEditor) setEditMode(true);
         onSuccess?.();
@@ -89,7 +91,7 @@ export function InviteApp({
         setPinBusy(false);
       }
     },
-    [pinBusy, pinValue],
+    [pinBusy, pinValue, pinUser],
   );
   const pinMode = useRef<"editor" | "save">("editor");
   const tapCount = useRef(0);
@@ -176,9 +178,11 @@ export function InviteApp({
     [activeId, persist],
   );
 
-  const onUpload = async (key: MediaKey, file: File) => {
+  const onUpload = async (key: MediaKey, rawFile: File) => {
     if (!pinRef.current) return;
     try {
+      // La copertina social viene compressa: WhatsApp non mostra immagini pesanti.
+      const file = key === "social" ? await compressImage(rawFile) : rawFile;
       const ext = file.name.split(".").pop() ?? "bin";
       const { path, token, bucket } = await createUploadFn({
         data: { token: pinRef.current, ext },
@@ -327,7 +331,14 @@ export function InviteApp({
         {!publicOnly && pinOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">
             <div className="w-full max-w-xs rounded-2xl bg-background p-5 text-foreground shadow-2xl">
-              <h2 className="text-base font-semibold">Inserisci il PIN</h2>
+              <h2 className="text-base font-semibold">Accesso riservato</h2>
+              <input
+                value={pinUser}
+                onChange={(e) => setPinUser(e.target.value)}
+                autoComplete="off"
+                className="mt-3 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="Utente"
+              />
               <input
                 value={pinValue}
                 onChange={(e) => setPinValue(e.target.value)}
@@ -337,7 +348,7 @@ export function InviteApp({
                 placeholder="PIN"
               />
               {pinError && (
-                <p className="mt-2 text-xs text-red-500">PIN non valido. Riprova.</p>
+                <p className="mt-2 text-xs text-red-500">Credenziali non valide. Riprova.</p>
               )}
               <div className="mt-4 flex gap-2">
                 <button
@@ -378,7 +389,7 @@ export function InviteApp({
     <main className="fixed inset-0 overflow-hidden bg-black">
       <div
         ref={stageRef}
-        className="relative mx-auto h-full w-full max-w-[calc(100dvh*9/16)] bg-white"
+        className="relative mx-auto h-full w-full max-w-[calc(100dvh*9/16)] overflow-hidden rounded-2xl bg-black"
       >
         {/* Cover */}
         {poster ? (
@@ -407,8 +418,8 @@ export function InviteApp({
             playsInline
             preload="auto"
             onEnded={onVideoEnd}
-            style={{ transitionDuration: `${FADE_MS}ms` }}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out ${
+            style={{ transitionDuration: videoVisible ? "0ms" : `${FADE_MS}ms` }}
+            className={`absolute inset-0 h-full w-full object-contain transition-opacity ease-in-out ${
               videoVisible ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           />
@@ -537,6 +548,12 @@ export function InviteApp({
         </a>
 
         {music && <audio ref={audioRef} src={music} loop />}
+
+        {/* Precaricamento silenzioso: le immagini sono già pronte quando servono */}
+        <div aria-hidden className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0">
+          {invite && <img src={invite} alt="" fetchPriority="high" />}
+          {dresscode && <img src={dresscode} alt="" />}
+        </div>
       </div>
 
       {/* Edit entry */}
@@ -577,8 +594,15 @@ export function InviteApp({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-6">
           <div className="w-full max-w-xs rounded-2xl bg-background p-5 text-foreground shadow-2xl">
             <h2 className="text-base font-semibold">
-              {pinMode.current === "save" ? "Conferma con il PIN" : "Inserisci il PIN"}
+              {pinMode.current === "save" ? "Conferma per salvare" : "Accesso riservato"}
             </h2>
+            <input
+              value={pinUser}
+              onChange={(e) => setPinUser(e.target.value)}
+              autoComplete="off"
+              className="mt-3 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              placeholder="Utente"
+            />
             <input
               value={pinValue}
               onChange={(e) => setPinValue(e.target.value)}
@@ -588,7 +612,7 @@ export function InviteApp({
               placeholder="PIN"
             />
             {pinError && (
-              <p className="mt-2 text-xs text-red-500">PIN non valido. Riprova.</p>
+              <p className="mt-2 text-xs text-red-500">Credenziali non valide. Riprova.</p>
             )}
             <div className="mt-4 flex gap-2">
               <button
@@ -892,4 +916,26 @@ function Slot({
       ) : null}
     </div>
   );
+}
+
+// Comprime le immagini (usata per la copertina social: WhatsApp ignora i file pesanti).
+async function compressImage(file: File, maxSide = 1200, quality = 0.82): Promise<File> {
+  if (!file.type.startsWith("image/") || typeof document === "undefined") return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", quality),
+    );
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
 }

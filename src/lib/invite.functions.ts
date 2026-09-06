@@ -11,11 +11,15 @@ function sessionToken(secret: string) {
 // The PIN is verified ONLY here, server-side. The client receives an opaque
 // session token and never sees or stores the real PIN value.
 export const verifyPinFn = createServerFn({ method: "POST" })
-  .inputValidator((data: { pin: string }) => data)
+  .inputValidator((data: { pin: string; user?: string }) => data)
   .handler(async ({ data }) => {
     const expected = process.env["EDITOR_PIN"];
+    const expectedUser = process.env["EDITOR_USER"];
     if (!expected || typeof data.pin !== "string" || data.pin !== expected) {
-      throw new Error("PIN non valido");
+      throw new Error("Credenziali non valide");
+    }
+    if (expectedUser && (data.user ?? "").trim().toLowerCase() !== expectedUser.toLowerCase()) {
+      throw new Error("Credenziali non valide");
     }
     return { token: sessionToken(expected) };
   });
