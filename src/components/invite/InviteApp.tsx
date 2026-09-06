@@ -178,9 +178,11 @@ export function InviteApp({
     [activeId, persist],
   );
 
-  const onUpload = async (key: MediaKey, file: File) => {
+  const onUpload = async (key: MediaKey, rawFile: File) => {
     if (!pinRef.current) return;
     try {
+      // La copertina social viene compressa: WhatsApp non mostra immagini pesanti.
+      const file = key === "social" ? await compressImage(rawFile) : rawFile;
       const ext = file.name.split(".").pop() ?? "bin";
       const { path, token, bucket } = await createUploadFn({
         data: { token: pinRef.current, ext },
