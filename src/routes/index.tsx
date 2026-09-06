@@ -4,13 +4,13 @@ import { InviteApp } from "@/components/invite/InviteApp";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Invito Digitale — Template modificabile" },
+      { title: "Invito Digitale by Carli" },
       {
         name: "description",
         content:
           "Template di invito digitale 9:16: cover, video animato, invito finale con link, dresscode, musica e logo. Modificabile e duplicabile.",
       },
-      { property: "og:title", content: "Invito Digitale — Template modificabile" },
+      { property: "og:title", content: "Invito Digitale by Carli" },
       {
         property: "og:description",
         content:

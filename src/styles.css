@@ -166,6 +166,7 @@
 html, body {
   overflow: hidden;
   overscroll-behavior: none;
+  background-color: #000000;
 }
 
 #lovable-badge { display: none !important; }
