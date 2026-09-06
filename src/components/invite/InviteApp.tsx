@@ -541,6 +541,12 @@ export function InviteApp({
         </a>
 
         {music && <audio ref={audioRef} src={music} loop />}
+
+        {/* Precaricamento silenzioso: le immagini sono già pronte quando servono */}
+        <div aria-hidden className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0">
+          {invite && <img src={invite} alt="" fetchPriority="high" />}
+          {dresscode && <img src={dresscode} alt="" />}
+        </div>
       </div>
 
       {/* Edit entry */}
