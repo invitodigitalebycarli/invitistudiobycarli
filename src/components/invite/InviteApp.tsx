@@ -68,6 +68,9 @@ export function InviteApp({
   const [videoVisible, setVideoVisible] = useState(false);
   const [dresscodeMounted, setDresscodeMounted] = useState(false);
   const [dresscodeVisible, setDresscodeVisible] = useState(false);
+  // True after the first user tap: only then we preload invite/dresscode images
+  // so they don't compete with the poster/video bandwidth at initial load.
+  const [preloadStarted, setPreloadStarted] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -269,6 +272,9 @@ export function InviteApp({
 
   const start = () => {
     if (editMode) return;
+    // Start preloading invite/dresscode images now that the user has interacted.
+    // We defer this to avoid bandwidth contention with the poster at initial load.
+    setPreloadStarted(true);
     if (replayTimer.current) {
       clearTimeout(replayTimer.current);
       replayTimer.current = null;
@@ -725,11 +731,14 @@ export function InviteApp({
 
         {music && <audio ref={audioRef} src={music} preload="none" loop />}
 
-        {/* Precaricamento silenzioso: le immagini sono già pronte quando servono */}
-        <div aria-hidden className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0">
-          {invite && <img src={invite} alt="" fetchPriority="high" />}
-          {dresscode && <img src={dresscode} alt="" />}
-        </div>
+        {/* Precaricamento silenzioso: montato solo dopo il tap dell'utente per
+            non competere con poster/video per la banda al caricamento iniziale */}
+        {preloadStarted && (
+          <div aria-hidden className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0">
+            {invite && <img src={invite} alt="" />}
+            {dresscode && <img src={dresscode} alt="" />}
+          </div>
+        )}
       </div>
 
       {/* Edit entry */}

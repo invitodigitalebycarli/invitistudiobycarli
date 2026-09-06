@@ -29,6 +29,16 @@ export const Route = createFileRoute("/i/$slug")({
           ? socialPath
           : `${origin}/api/public/media/${socialPath}`
         : null;
+
+    // Poster preload: tell the browser to fetch the cover image immediately,
+    // before React hydrates, so it's already decoded when the component mounts.
+    const posterPath = loaderData.site.media?.poster;
+    const posterPreloadUrl = posterPath
+      ? /^https?:\/\//.test(posterPath)
+        ? posterPath
+        : `${origin}/api/public/media/${posterPath}`
+      : null;
+
     return {
       meta: [
         { title },
@@ -45,6 +55,11 @@ export const Route = createFileRoute("/i/$slug")({
               { property: "og:image", content: image },
               { name: "twitter:image", content: image },
             ]
+          : []),
+      ],
+      links: [
+        ...(posterPreloadUrl
+          ? [{ rel: "preload", as: "image", href: posterPreloadUrl, fetchPriority: "high" as const }]
           : []),
       ],
     };
