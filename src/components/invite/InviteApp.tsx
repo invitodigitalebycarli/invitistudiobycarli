@@ -190,11 +190,17 @@ export function InviteApp({
   const dresscode = mediaUrl(site?.media.dresscode);
   const music = mediaUrl(site?.media.music);
 
-  // Dissolvenza di apertura/chiusura della finestra dresscode
+  // Dissolvenza di apertura/chiusura della finestra dresscode.
+  // Il doppio requestAnimationFrame è necessario: il primo frame monta l'elemento
+  // con opacity-0, il secondo applica opacity-100 avviando la transizione CSS.
+  // Con un singolo RAF React batchizza mount + visible nello stesso commit e il
+  // browser non vede mai il frame iniziale, quindi la dissolvenza non parte.
   useEffect(() => {
     if (dresscodeOpen) {
       setDresscodeMounted(true);
-      const id = requestAnimationFrame(() => setDresscodeVisible(true));
+      const id = requestAnimationFrame(() =>
+        requestAnimationFrame(() => setDresscodeVisible(true)),
+      );
       return () => cancelAnimationFrame(id);
     }
     setDresscodeVisible(false);
