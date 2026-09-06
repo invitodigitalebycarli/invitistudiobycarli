@@ -133,9 +133,22 @@ export function InviteApp({
   };
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const replayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sitesRef = useRef<InviteConfig[]>([]);
   sitesRef.current = sites;
 
+
+  // Cleanup all timers on unmount to prevent setState-after-unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (replayTimer.current) clearTimeout(replayTimer.current);
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+      if (tapTimer.current) clearTimeout(tapTimer.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (publicOnly) return;
@@ -213,6 +226,9 @@ export function InviteApp({
     },
     [activeId, persist],
   );
+  // Keep a ref to update so the drag/resize effect never has stale closure
+  const updateRef = useRef(update);
+  updateRef.current = update;
 
   const onUpload = async (key: MediaKey, rawFile: File) => {
     if (!pinRef.current) return;
@@ -239,6 +255,11 @@ export function InviteApp({
 
 
 
+
+  // siteRef keeps the latest site snapshot accessible inside event handlers
+  // without requiring the drag/resize effect to re-subscribe on every render.
+  const siteRef = useRef(site);
+  siteRef.current = site;
 
   const start = () => {
     if (editMode) return;
@@ -282,7 +303,6 @@ export function InviteApp({
     );
   };
 
-  const replayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const replay = () => {
     // Interrompe e azzera immediatamente l'audio al click su "Riguarda"
     const a = audioRef.current;
@@ -333,12 +353,15 @@ export function InviteApp({
 
 
   // Hotspot dragging + resizing (solo per l'editor, anche fuori dal pannello)
+  // Uses refs for site and update so the effect is registered only once per
+  // unlock/publicOnly change, avoiding stale-closure bugs during drag.
   useEffect(() => {
     if (!unlocked || publicOnly) return;
 
     const move = (e: PointerEvent) => {
+      const currentSite = siteRef.current;
       const el = stageRef.current;
-      if (!el || !site) return;
+      if (!el || !currentSite) return;
       const rect = el.getBoundingClientRect();
 
       // Resize
@@ -348,8 +371,8 @@ export function InviteApp({
         const dy = ((e.clientY - rd.startY) / rd.stageH) * 100;
         const newW = Math.min(80, Math.max(4, rd.startW + dx * 2));
         const newH = Math.min(40, Math.max(2, rd.startH + dy * 2));
-        update({
-          hotspots: site.hotspots.map((h) =>
+        updateRef.current({
+          hotspots: currentSite.hotspots.map((h) =>
             h.id === rd.id ? { ...h, width: newW, height: newH } : h,
           ),
         });
@@ -361,8 +384,8 @@ export function InviteApp({
       if (!id) return;
       const left = ((e.clientX - rect.left) / rect.width) * 100;
       const top = ((e.clientY - rect.top) / rect.height) * 100;
-      update({
-        hotspots: site.hotspots.map((h) =>
+      updateRef.current({
+        hotspots: currentSite.hotspots.map((h) =>
           h.id === id
             ? { ...h, left: Math.min(100, Math.max(0, left)), top: Math.min(100, Math.max(0, top)) }
             : h,
@@ -379,7 +402,10 @@ export function InviteApp({
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     };
-  }, [unlocked, publicOnly, site, update]);
+  // Only re-register on unlock/publicOnly change, not on every site/update change.
+  // siteRef and updateRef stay current without triggering re-registration.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unlocked, publicOnly]);
 
   if (!site)
     return (
@@ -527,6 +553,8 @@ export function InviteApp({
                 height: `${h.height}%`,
                 transform: "translate(-50%, -50%)",
                 position: "absolute",
+                // overflow visible so the resize handle is not clipped by stage overflow-hidden
+                overflow: editable ? "visible" : "hidden",
               }}
               className={editable ? "z-30" : "z-10"}
             >
@@ -824,7 +852,8 @@ export function InviteApp({
                 const url = getDefinitiveInviteUrl(site.slug || site.id);
                 void navigator.clipboard?.writeText(url);
                 setCopiedFeedback(true);
-                setTimeout(() => setCopiedFeedback(false), 2500);
+                if (copiedTimer.current) clearTimeout(copiedTimer.current);
+                copiedTimer.current = setTimeout(() => setCopiedFeedback(false), 2500);
               }}
               className="whitespace-nowrap rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground transition-opacity active:opacity-80"
             >
