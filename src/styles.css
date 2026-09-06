@@ -154,23 +154,23 @@
 
 @utility badge-glass {
   border-radius: 9999px;
-  background: color-mix(in oklab, black 45%, transparent);
+  background: color-mix(in oklab, black 40%, transparent);
   color: white;
   font-weight: 700;
   backdrop-filter: blur(12px);
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.28);
   outline: 1px solid rgb(255 255 255 / 0.15);
   outline-offset: -1px;
 }
 
 @utility badge-glass-light {
   border-radius: 9999px;
-  background: color-mix(in oklab, white 83%, transparent);
+  background: color-mix(in oklab, white 40%, transparent);
   color: #111111;
   font-weight: 700;
   backdrop-filter: blur(12px);
-  box-shadow: 0 8px 16px -2px rgb(0 0 0 / 0.22);
-  outline: 1px solid rgb(0 0 0 / 0.1);
+  box-shadow: 0 8px 16px -2px rgb(0 0 0 / 0.2);
+  outline: 1px solid rgb(0 0 0 / 0.12);
   outline-offset: -1px;
 }
 
