@@ -566,35 +566,37 @@ export function InviteApp({
           >
             {dresscode ? (
               <div
-                className="relative inline-block max-h-[82vh] max-w-[92vw]"
+                className="relative flex flex-col items-end max-h-[86vh] max-w-[92vw]"
                 onClick={(e) => e.stopPropagation()}
               >
+                <button
+                  onClick={() => setDresscodeOpen(false)}
+                  className={`${badgeStyle} mb-2.5 h-9 w-9 shrink-0 self-end z-10`}
+                  aria-label="Chiudi dresscode"
+                >
+                  <X size={18} />
+                </button>
                 <img
                   src={dresscode}
                   alt="Dresscode"
-                  className="max-h-[80vh] w-auto max-w-full rounded-2xl sm:rounded-3xl object-contain shadow-2xl block"
+                  className="max-h-[76vh] w-auto max-w-full rounded-2xl sm:rounded-3xl object-contain shadow-2xl block"
                 />
-                <button
-                  onClick={() => setDresscodeOpen(false)}
-                  className={`${badgeStyle} absolute right-3 top-3 h-8 w-8 z-10`}
-                  aria-label="Chiudi dresscode"
-                >
-                  <X size={16} />
-                </button>
               </div>
             ) : (
               <div
-                className="relative rounded-2xl bg-black/60 p-6 text-center text-white"
+                className="relative flex flex-col items-end max-w-[90vw]"
                 onClick={(e) => e.stopPropagation()}
               >
-                <p className="text-sm text-white/90">Nessuna immagine dresscode caricata</p>
                 <button
                   onClick={() => setDresscodeOpen(false)}
-                  className={`${badgeStyle} absolute -right-2 -top-2 h-8 w-8 z-10`}
-                  aria-label="Chiudi"
+                  className={`${badgeStyle} mb-2.5 h-9 w-9 shrink-0 self-end z-10`}
+                  aria-label="Chiudi dresscode"
                 >
-                  <X size={16} />
+                  <X size={18} />
                 </button>
+                <div className="rounded-2xl bg-black/60 p-6 text-center text-white">
+                  <p className="text-sm text-white/90">Nessuna immagine dresscode caricata</p>
+                </div>
               </div>
             )}
           </div>
