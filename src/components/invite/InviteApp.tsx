@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Lock, Plus, RotateCcw, Volume2, VolumeX, X, Copy, Pencil, Trash2 } from "lucide-react";
+import { Lock, Plus, RotateCcw, X, Copy, Pencil, Trash2 } from "lucide-react";
 import {
   type InviteConfig,
   type MediaKey,
+  type ButtonTheme,
   defaultConfig,
   getActiveId,
   slugify,
   mediaUrl,
   setActiveId,
+  getDefinitiveInviteUrl,
 } from "@/lib/invite-store";
 import {
   copyMediaFn,
   createUploadFn,
   deleteSiteFn,
+  getActiveSiteFn,
   listSitesFn,
   saveSiteFn,
   verifyPinFn,
@@ -26,8 +29,10 @@ const LOGO_LINK = "https://instagram.com/invitodigitalebycarli";
 
 const FADE_MS = 1800;
 
-const BADGE =
-  "badge-glass inline-flex items-center justify-center gap-2 transition-transform active:scale-95";
+const BADGE_BASE =
+  "inline-flex items-center justify-center gap-2 transition-transform active:scale-95";
+const BADGE_DARK = `badge-glass ${BADGE_BASE}`;
+const BADGE_LIGHT = `badge-glass-light ${BADGE_BASE}`;
 
 const MEDIA_LABELS: { key: MediaKey; label: string; accept: string }[] = [
   { key: "poster", label: "Copertina (immagine)", accept: "image/*" },
@@ -49,6 +54,7 @@ export function InviteApp({
   const [activeId, setActive] = useState<string | null>(initialSite?.id ?? null);
   const [editMode, setEditMode] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
+  const [copiedFeedback, setCopiedFeedback] = useState(false);
 
   const [pinOpen, setPinOpen] = useState(false);
   const [pinValue, setPinValue] = useState("");
@@ -121,19 +127,37 @@ export function InviteApp({
 
   useEffect(() => {
     if (publicOnly) return;
-    void (async () => {
-      try {
-        const loaded = await listSitesFn();
-        setSites(loaded);
-        const saved = getActiveId();
-        setActive(saved && loaded.some((s) => s.id === saved) ? saved : (loaded[0]?.id ?? null));
-      } catch (err) {
-        console.error("load failed", err);
-      }
-    })();
-  }, [publicOnly]);
+    if (unlocked) {
+      // Editor sbloccato: carica tutti i siti per la gestione e duplicazione
+      void (async () => {
+        try {
+          const loaded = await listSitesFn();
+          setSites(loaded);
+          const saved = getActiveId();
+          setActive(saved && loaded.some((s) => s.id === saved) ? saved : (loaded[0]?.id ?? null));
+        } catch (err) {
+          console.error("load failed", err);
+        }
+      })();
+    } else {
+      // Visitatore pubblico: carica solo ed esclusivamente il sito attivo/principale
+      void (async () => {
+        try {
+          const res = await getActiveSiteFn({ id: getActiveId() });
+          if (res?.site) {
+            setSites([res.site]);
+            setActive(res.site.id);
+          }
+        } catch (err) {
+          console.error("load active site failed", err);
+        }
+      })();
+    }
+  }, [publicOnly, unlocked]);
 
   const site = sites.find((s) => s.id === activeId) ?? null;
+  const buttonTheme: ButtonTheme = site?.buttonTheme ?? "dark";
+  const badgeStyle = buttonTheme === "light" ? BADGE_LIGHT : BADGE_DARK;
 
   const poster = mediaUrl(site?.media.poster);
   const video = mediaUrl(site?.media.video);
@@ -206,12 +230,17 @@ export function InviteApp({
 
   const start = () => {
     if (editMode) return;
+    if (replayTimer.current) {
+      clearTimeout(replayTimer.current);
+      replayTimer.current = null;
+    }
     if (video) {
       setScene("video");
       setVideoVisible(true);
       const v = videoRef.current;
       if (v) {
         v.currentTime = 0;
+        v.muted = true;
         void v.play().catch(() => undefined);
       }
     } else {
@@ -223,7 +252,10 @@ export function InviteApp({
     if (a) {
       a.volume = 0.4;
       a.currentTime = 0;
-      void a.play().catch(() => undefined);
+      if (!muted) {
+        a.muted = false;
+        void a.play().catch(() => undefined);
+      }
     }
   };
 
@@ -318,12 +350,12 @@ export function InviteApp({
 
   if (!site)
     return (
-      <main className="fixed inset-0 bg-white">
+      <main className="fixed inset-0 bg-black">
         {!publicOnly && (
         <button
           onClick={unlockTap}
           aria-label="Area riservata"
-          className="fixed bottom-3 left-3 z-40 p-2 text-black/20 transition-opacity hover:text-black/60"
+          className="fixed bottom-3 left-3 z-40 p-2 text-white/20 transition-opacity hover:text-white/60"
         >
           <Lock size={14} />
         </button>
@@ -389,7 +421,7 @@ export function InviteApp({
     <main className="fixed inset-0 overflow-hidden bg-black">
       <div
         ref={stageRef}
-        className="relative mx-auto h-full w-full max-w-[calc(100dvh*9/16)] overflow-hidden rounded-2xl bg-black"
+        className="relative h-full w-full overflow-hidden bg-black"
       >
         {/* Cover */}
         {poster ? (
@@ -416,7 +448,7 @@ export function InviteApp({
             poster={poster ?? undefined}
             muted
             playsInline
-            preload="auto"
+            preload="metadata"
             onEnded={onVideoEnd}
             style={{ transitionDuration: videoVisible ? "0ms" : `${FADE_MS}ms` }}
             className={`absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out ${
@@ -480,9 +512,10 @@ export function InviteApp({
         {scene === "cover" && !editMode && (
           <button
             onClick={start}
-            className="absolute inset-0 z-10 flex animate-fade-in items-end justify-center pb-[25%]"
+            style={{ paddingBottom: "calc(25% + 0.5cm)" }}
+            className="absolute inset-0 z-10 flex animate-fade-in items-end justify-center"
           >
-            <span className={`${BADGE} animate-soft-float px-5 py-2.5 text-sm tracking-wide`}>
+            <span className={`${badgeStyle} animate-soft-float px-5 py-2.5 text-sm tracking-wide`}>
               {site.texts.open}
             </span>
           </button>
@@ -491,19 +524,28 @@ export function InviteApp({
         {/* Controls */}
         {scene !== "cover" && !editMode && (
           <>
-            <button onClick={replay} className={`${BADGE} absolute left-4 top-4 z-20 px-4 py-2 text-sm`}>
+            <button onClick={replay} className={`${badgeStyle} absolute left-4 top-4 z-20 px-4 py-2 text-sm`}>
               <RotateCcw size={16} /> {site.texts.replay}
             </button>
             <button
               onClick={() => {
                 const a = audioRef.current;
-                if (a) a.muted = !a.muted;
+                if (a) {
+                  if (muted) {
+                    a.muted = false;
+                    void a.play().catch(() => undefined);
+                  } else {
+                    a.muted = true;
+                  }
+                }
                 setMuted((m) => !m);
               }}
-              className={`${BADGE} absolute right-4 top-4 z-20 h-10 w-10`}
-              aria-label="Audio"
+              className={`${badgeStyle} absolute right-4 top-4 z-20 h-10 w-10`}
+              aria-label={muted ? "Attiva audio" : "Disattiva audio"}
             >
-              {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              <span className="text-base select-none leading-none" role="img" aria-hidden="true">
+                {muted ? "🔇" : "🔊"}
+              </span>
             </button>
           </>
         )}
@@ -513,26 +555,43 @@ export function InviteApp({
           <div
             onClick={() => setDresscodeOpen(false)}
             style={{ transitionDuration: `${FADE_MS}ms` }}
-            className={`absolute inset-0 z-20 flex items-center justify-center bg-black/70 px-5 backdrop-blur-sm transition-opacity ease-in-out ${
+            className={`absolute inset-0 z-20 flex items-center justify-center bg-black/40 px-4 backdrop-blur-[2px] transition-opacity ease-in-out ${
               dresscodeVisible ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           >
             {dresscode ? (
-              <img
-                src={dresscode}
-                alt="Dresscode"
-                className="max-h-[78%] w-full rounded-3xl object-contain shadow-2xl"
-              />
+              <div
+                className="relative inline-block max-h-[82vh] max-w-[92vw]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <img
+                  src={dresscode}
+                  alt="Dresscode"
+                  className="max-h-[80vh] w-auto max-w-full rounded-2xl sm:rounded-3xl object-contain shadow-2xl block"
+                />
+                <button
+                  onClick={() => setDresscodeOpen(false)}
+                  className={`${badgeStyle} absolute right-3 top-3 h-8 w-8 z-10`}
+                  aria-label="Chiudi dresscode"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             ) : (
-              <p className="text-sm text-white/80">Nessuna immagine dresscode caricata</p>
+              <div
+                className="relative rounded-2xl bg-black/60 p-6 text-center text-white"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p className="text-sm text-white/90">Nessuna immagine dresscode caricata</p>
+                <button
+                  onClick={() => setDresscodeOpen(false)}
+                  className={`${badgeStyle} absolute -right-2 -top-2 h-8 w-8 z-10`}
+                  aria-label="Chiudi"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             )}
-            <button
-              onClick={() => setDresscodeOpen(false)}
-              className={`${BADGE} absolute right-4 top-4 h-10 w-10`}
-              aria-label="Chiudi"
-            >
-              <X size={18} />
-            </button>
           </div>
         )}
 
@@ -547,7 +606,7 @@ export function InviteApp({
           <img src={LOGO_SRC} alt="Logo" className="h-full w-full object-cover" />
         </a>
 
-        {music && <audio ref={audioRef} src={music} loop />}
+        {music && <audio ref={audioRef} src={music} preload="none" loop />}
 
         {/* Precaricamento silenzioso: le immagini sono già pronte quando servono */}
         <div aria-hidden className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0">
@@ -561,7 +620,7 @@ export function InviteApp({
         (editMode ? (
           <button
             onClick={() => setEditMode(false)}
-            className={`${BADGE} fixed bottom-4 left-4 z-40 px-4 py-2 text-xs`}
+            className={`${badgeStyle} fixed bottom-4 left-4 z-40 px-4 py-2 text-xs`}
           >
             <X size={14} /> Chiudi editor
           </button>
@@ -569,7 +628,7 @@ export function InviteApp({
           <button
             onClick={unlockTap}
             aria-label="Area riservata"
-            className="fixed bottom-3 left-3 z-40 p-2 text-black/20 transition-opacity hover:text-black/60"
+            className="fixed bottom-3 left-3 z-40 p-2 text-white/20 transition-opacity hover:text-white/60"
           >
             <Lock size={14} />
           </button>
@@ -584,7 +643,7 @@ export function InviteApp({
             setPinValue("");
             setPinOpen(true);
           }}
-          className={`${BADGE} fixed bottom-4 left-1/2 z-40 -translate-x-1/2 px-4 py-2 text-xs`}
+          className={`${badgeStyle} fixed bottom-4 left-1/2 z-40 -translate-x-1/2 px-4 py-2 text-xs`}
         >
           Salva
         </button>
@@ -669,7 +728,7 @@ export function InviteApp({
             className="mt-1 w-full rounded-md border border-input px-2 py-1.5 text-sm"
           />
 
-          <label className="mt-3 block text-xs font-medium">Indirizzo del link</label>
+          <label className="mt-3 block text-xs font-medium">Indirizzo del link definitivo</label>
           <div className="mt-1 flex gap-2">
             <input
               value={site.slug ?? ""}
@@ -679,23 +738,54 @@ export function InviteApp({
             />
             <button
               onClick={() => {
-                const url = `${window.location.origin}/i/${site.slug || site.id}`;
+                const url = getDefinitiveInviteUrl(site.slug || site.id);
                 void navigator.clipboard?.writeText(url);
-                alert(`Link copiato:\n${url}`);
+                setCopiedFeedback(true);
+                setTimeout(() => setCopiedFeedback(false), 2500);
               }}
-              className="whitespace-nowrap rounded-md border border-input px-2 py-1.5 text-xs"
+              className="whitespace-nowrap rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground transition-opacity active:opacity-80"
             >
-              Copia link
+              {copiedFeedback ? "Copiato! ✓" : "Copia link"}
             </button>
           </div>
           <a
-            href={`/i/${site.slug || site.id}`}
+            href={getDefinitiveInviteUrl(site.slug || site.id)}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-1 block truncate text-[11px] text-muted-foreground underline"
+            className="mt-1 block truncate text-[11px] text-muted-foreground hover:text-primary underline"
           >
-            /i/{site.slug || site.id}
+            {getDefinitiveInviteUrl(site.slug || site.id)}
           </a>
+
+          <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Colore pulsanti
+          </h3>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => update({ buttonTheme: "dark" })}
+              className={`flex items-center justify-center gap-2 rounded-md border p-2 text-xs font-medium transition-colors ${
+                (site.buttonTheme ?? "dark") === "dark"
+                  ? "border-primary bg-primary text-primary-foreground font-semibold"
+                  : "border-input bg-background hover:bg-accent"
+              }`}
+            >
+              <span className="h-3 w-3 rounded-full bg-black border border-white/40 shadow-sm" />
+              Scuro
+            </button>
+            <button
+              type="button"
+              onClick={() => update({ buttonTheme: "light" })}
+              className={`flex items-center justify-center gap-2 rounded-md border p-2 text-xs font-medium transition-colors ${
+                site.buttonTheme === "light"
+                  ? "border-primary bg-primary text-primary-foreground font-semibold"
+                  : "border-input bg-background hover:bg-accent"
+              }`}
+            >
+              <span className="h-3 w-3 rounded-full bg-white border border-black/40 shadow-sm" />
+              Chiaro
+            </button>
+          </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
             {sites.map((s) => (
@@ -737,6 +827,7 @@ export function InviteApp({
             {sites.length > 1 && (
               <button
                 onClick={() => {
+                  if (!window.confirm(`Sei sicuro di voler eliminare l'invito "${site.name}"? L'operazione non è reversibile.`)) return;
                   const removed = site.id;
                   const next = sites.filter((s) => s.id !== removed);
                   setSites(next);
@@ -748,8 +839,8 @@ export function InviteApp({
                     void deleteSiteFn({ data: { token: pinRef.current, id: removed } });
                   }
                 }}
-
-                className="rounded-md border border-input px-3 py-2 text-xs text-destructive"
+                className="rounded-md border border-input px-3 py-2 text-xs text-destructive hover:bg-destructive/10"
+                aria-label="Elimina invito"
               >
                 <Trash2 size={14} />
               </button>

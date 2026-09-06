@@ -17,11 +17,15 @@ export const Route = createFileRoute("/i/$slug")({
     const title = loaderData.site.name || "Invito";
     const description = "Apri il tuo invito digitale: video, dettagli, dresscode e conferma.";
     const socialPath = loaderData.site.media?.social ?? loaderData.site.media?.poster;
+    const origin =
+      loaderData.origin && !loaderData.origin.includes("lovableproject.com")
+        ? loaderData.origin
+        : "https://invitistudiobycarli.lovable.app";
     const image =
-      socialPath && loaderData.origin
+      socialPath
         ? /^https?:\/\//.test(socialPath)
           ? socialPath
-          : `${loaderData.origin}/api/public/media/${socialPath}`
+          : `${origin}/api/public/media/${socialPath}`
         : null;
     return {
       meta: [
@@ -43,13 +47,13 @@ export const Route = createFileRoute("/i/$slug")({
   },
   component: InvitePage,
   notFoundComponent: () => (
-    <main className="flex min-h-screen items-center justify-center bg-white px-6 text-center">
-      <p className="text-sm text-black/60">Invito non trovato.</p>
+    <main className="flex min-h-screen items-center justify-center bg-black px-6 text-center">
+      <p className="text-sm text-white/60">Invito non trovato.</p>
     </main>
   ),
   errorComponent: () => (
-    <main className="flex min-h-screen items-center justify-center bg-white px-6 text-center">
-      <p className="text-sm text-black/60">Invito non disponibile.</p>
+    <main className="flex min-h-screen items-center justify-center bg-black px-6 text-center">
+      <p className="text-sm text-white/60">Invito non disponibile.</p>
     </main>
   ),
 });

@@ -21,6 +21,8 @@ export type Hotspot = {
   url: string;
 };
 
+export type ButtonTheme = "dark" | "light";
+
 export type InviteConfig = {
   id: string;
   name: string;
@@ -29,7 +31,24 @@ export type InviteConfig = {
   texts: { open: string; replay: string };
   instagram: string;
   hotspots: Hotspot[];
+  buttonTheme?: ButtonTheme;
 };
+
+export const PRODUCTION_URL = "https://invitistudiobycarli.lovable.app";
+
+export function getDefinitiveInviteUrl(slugOrId: string): string {
+  if (typeof window === "undefined") {
+    return `${PRODUCTION_URL}/i/${slugOrId}`;
+  }
+  const hostname = window.location.hostname;
+  const isPreview =
+    hostname.includes("lovableproject.com") ||
+    hostname.includes("localhost") ||
+    hostname.includes("127.0.0.1") ||
+    hostname.endsWith(".lovable.dev");
+  const base = isPreview ? PRODUCTION_URL : window.location.origin;
+  return `${base}/i/${slugOrId}`;
+}
 
 const ACTIVE_KEY = "invite:active";
 
@@ -51,6 +70,7 @@ export function defaultConfig(name = "Invito"): InviteConfig {
     media: {},
     texts: { open: "Tocca per aprire", replay: "Riguarda" },
     instagram: "https://instagram.com/invitodigitalebycarli",
+    buttonTheme: "dark",
     hotspots: [
       {
         id: "left",

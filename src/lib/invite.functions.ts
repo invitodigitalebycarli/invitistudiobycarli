@@ -99,15 +99,44 @@ export const getSiteFn = createServerFn({ method: "GET" })
   .inputValidator((data: { slug: string }) => data)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin
-      .from("invite_sites")
-      .select("id, name, data");
-    if (error) throw new Error(error.message);
-    const key = data.slug.toLowerCase();
-    const row = (rows ?? []).find((r) => {
-      const d = r.data as { slug?: string } | null;
-      return r.id === key || (d?.slug ?? "").toLowerCase() === key;
-    });
+    const key = (data.slug ?? "").trim().toLowerCase();
+    if (!key) return null;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key);
+
+    let row: { id: string; name: string; data: unknown } | null = null;
+
+    if (isUuid) {
+      const { data: byId } = await supabaseAdmin
+        .from("invite_sites")
+        .select("id, name, data")
+        .eq("id", key)
+        .maybeSingle();
+      if (byId) row = byId;
+    }
+
+    if (!row) {
+      const { data: bySlug } = await supabaseAdmin
+        .from("invite_sites")
+        .select("id, name, data")
+        .filter("data->>slug", "ilike", key)
+        .limit(1)
+        .maybeSingle();
+      if (bySlug) row = bySlug;
+    }
+
+    if (!row) {
+      // Fallback in case of special character normalization difference
+      const { data: rows } = await supabaseAdmin
+        .from("invite_sites")
+        .select("id, name, data");
+      row =
+        (rows ?? []).find((r) => {
+          const d = r.data as { slug?: string } | null;
+          return r.id.toLowerCase() === key || (d?.slug ?? "").toLowerCase() === key;
+        }) ?? null;
+    }
+
     if (!row) return null;
     let origin = "";
     try {
@@ -123,5 +152,43 @@ export const getSiteFn = createServerFn({ method: "GET" })
         name: row.name,
       } as InviteConfig,
       origin,
+    };
+  });
+
+export const getActiveSiteFn = createServerFn({ method: "GET" })
+  .inputValidator((data?: { id?: string | null }) => data)
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const targetId = data?.id;
+    if (targetId) {
+      const { data: row } = await supabaseAdmin
+        .from("invite_sites")
+        .select("id, name, data")
+        .eq("id", targetId)
+        .maybeSingle();
+      if (row) {
+        return {
+          site: {
+            ...(row.data as Omit<InviteConfig, "id" | "name">),
+            id: row.id,
+            name: row.name,
+          } as InviteConfig,
+        };
+      }
+    }
+    const { data: rows } = await supabaseAdmin
+      .from("invite_sites")
+      .select("id, name, data")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true })
+      .limit(1);
+    const row = rows?.[0];
+    if (!row) return null;
+    return {
+      site: {
+        ...(row.data as Omit<InviteConfig, "id" | "name">),
+        id: row.id,
+        name: row.name,
+      } as InviteConfig,
     };
   });
